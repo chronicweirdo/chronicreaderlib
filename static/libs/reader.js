@@ -1,3 +1,13 @@
+/*import {
+    BlobReader,
+    BlobWriter,
+    TextReader,
+    TextWriter,
+    ZipReader,
+    ZipWriter,
+  } from "zip.js";*/
+
+
 /*
 zip wrapper:
 - get list of files
@@ -23,13 +33,49 @@ class ZipWrapper {
             .map(v => v[0])
         return files
     }
+    // https://stuk.github.io/jszip/documentation/api_zipobject/async.html
+    async #getFileContents(filename, filekind) {
+        let zip = await this.#getZip()
+        let entry = zip.files[filename]
+        let contents = await entry.async(filekind)
+        return contents
+    }
+    async getBase64FileContents(filename) {
+        return this.#getFileContents(filename, "base64")
+    }
+    async getTextFileContents(filename) {
+        return this.#getFileContents(filename, "text")
+    }
+}
+
+// zip wrapper based on zip js
+/*class ZipWrapper2 {
+    constructor(bytes) {
+        console.log(bytes)
+        this.data = bytes
+    }
+    async #getZip() {
+        if (this.archive == undefined) {
+            let zipFileReader = new zip.BlobReader(this.data)
+            let zipReader = new zip.ZipReader(zipFileReader)
+            this.archive = zipReader
+        }
+        return this.archive
+    }
+    async getFiles() {
+        let archive = await this.#getZip()
+        let files = await archive.getEntries()
+            //.filter(v => v[1].dir == false)
+            //.map(v => v[0])
+        return files
+    }
     async getBase64FileContents(filename) {
         let zip = await this.#getZip()
         let entry = zip.files[filename]
         let contents = await entry.async("base64")
         return contents
     }
-}
+}*/
 
 /*
 comic wrapper
@@ -85,11 +131,82 @@ class EbookWrapper {
         this.archive = archive
     }
 
-    async #getPositionedResources() {
-
+    async getSize() {
+        console.log("getting book size")
+        if (this.size == undefined) {
+            let spine = await this.getSpine()
+            console.log("spine: " + spine)
+            let size = 0
+            for (var i = 0; i < spine.length; i++) {
+                let resourceNode = await this.#getResourceNode(spine[i])
+                size = size + resourceNode.getLength()
+            }
+            this.size = size
+        }
+        return this.size
     }
 
-    async getSize() {
+    async #getOpf() {
+        let files = await this.archive.getFiles()
+        let opfFile = files.find(f => f.toLowerCase().endsWith(".opf"))
+        return {
+            'name': opfFile,
+            'contents': await this.archive.getTextFileContents(opfFile)
+        }
+    }
 
+    getFileFolder(filePath) {
+        let elems = filePath.split("/")
+        if (elems.length > 1) {
+            return elems.slice(0, -1).join("/")
+        } else {
+            return ""
+        }
+    }
+
+    computeAbsolutePath(location, filename) {
+        if (location != null && location.length > 0) {
+            return location + "/" + filename
+        } else {
+            return filename
+        }
+    }
+
+    async parseOpf() {
+        let opf = await this.#getOpf()
+        console.log(opf.name)
+        console.log(this.getFileFolder(opf.name))
+        let opfXmlText = opf.contents
+        let parser = new DOMParser()
+        let xmlDoc = parser.parseFromString(opfXmlText, "text/xml")
+
+        // get spine
+        let spine = Array.from(xmlDoc.getElementsByTagName("itemref")).map(element => {
+            let item = xmlDoc.getElementById(element.getAttribute("idref"))
+            return item.getAttribute("href")
+        }).map(element => this.computeAbsolutePath(this.getFileFolder(opf.name), element))
+        this.spine = spine
+        //return xmlDoc.getElementsByTagName("itemref")
+        return spine
+    }
+
+    async getSpine() {
+        if (this.spine == undefined) {
+            await this.parseOpf()
+        }
+        return this.spine
+    }
+
+    async #getResourceNode(fileName) {
+        console.log("getting resource node for " + fileName)
+        if (this.node == undefined) this.node = {}
+        if (this.node[fileName] === undefined) {
+            console.log("computing resource node for " + fileName)
+            let xmlText = await this.archive.getTextFileContents(fileName)
+            let bookNode = parse(xmlText)
+            console.log(bookNode)
+            this.node[fileName] = bookNode
+        }
+        return this.node[fileName]
     }
 }

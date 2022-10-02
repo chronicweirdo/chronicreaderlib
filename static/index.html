@@ -2,8 +2,11 @@
 <html>
     <head>
         <script src="/libs/jszip.js"></script>
+        <!--script src="/libs/zip.js"></script-->
+        <script src="/libs/bookNode.js"></script>
         <script src="/libs/reader.js"></script>
         <script>
+            var book;
             window.onload = function() {
                 // code to execute on the page load
                 //var zip = new JSZip()
@@ -30,11 +33,12 @@
                         })
                     })*/
                 // work directly with comic
-                fetch("/books/Feature_Comics_111.cbz")
+
+                /*fetch("/books/Feature_Comics_111.cbz")
                     .then(res => res.blob())
                     .then(blob => {
                         let zip = new ZipWrapper(blob)
-                        zip.getFiles().then(console.log)
+                        //zip.getFiles().then(console.log)
                         return zip
                     })
                     .then(zip => new ComicWrapper(zip))
@@ -43,6 +47,21 @@
                             var img = document.getElementById("comicpage")
                             img.src="data:image/png;base64," + b64
                         })
+                    })*/
+                
+                
+                fetch("/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub")
+                    .then(res => res.blob())
+                    .then(blob => {
+                        let zip = new ZipWrapper(blob)
+                        //zip.getFiles().then(console.log)
+                        return zip
+                    })
+                    .then(zip => new EbookWrapper(zip))
+                    .then(ebook => {
+                        this.book = ebook
+                        //ebook.parseOpf().then(res => spine = res)
+                        ebook.getSize().then(console.log)
                     })
             }
         </script>
