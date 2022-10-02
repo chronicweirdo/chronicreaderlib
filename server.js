@@ -32,4 +32,4 @@ var staticServe = function(req, res) {
 
 var httpServer = http.createServer(staticServe)
 
-httpServer.listen(10000)
+httpServer.listen(10000, "0.0.0.0")

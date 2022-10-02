@@ -1,0 +1,13 @@
+# https://github.com/0916dhkim/vscode-devcontainer-tutorial/blob/master/.devcontainer/docker-compose.yml
+version: "3"
+services:
+  workspace:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    command: sleep infinity
+    user: root
+    ports:
+      - 10000:10000
+    volumes:
+      - ..:/workspace

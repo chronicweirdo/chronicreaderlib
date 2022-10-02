@@ -1,11 +1,17 @@
 {
-    "build": {
+    /*"build": {
         "dockerfile": "Dockerfile"
     },
     "mounts": [
         "source=d:\\books2,target=/books,type=bind,consistency=cached"
-    ]/*,
-    "extensions": [
+    ],*/
+    "dockerComposeFile": [ "docker-compose.yaml" ],
+    "service": "workspace",
+    "workspaceFolder": "/workspace"
+    //"runArgs": ["-p 8087:8087"]
+    //"appPort": 10000//,
+    //"forwardPorts": ["0.0.0.0:10000"]//,
+    /*"extensions": [
         "redhat.java",
         "vscjava.vscode-java-debug",
         "vscjava.vscode-java-test",
