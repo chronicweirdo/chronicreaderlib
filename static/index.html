@@ -2,17 +2,47 @@
 <html>
     <head>
         <script src="/libs/jszip.js"></script>
+        <script src="/libs/reader.js"></script>
         <script>
             window.onload = function() {
                 // code to execute on the page load
-                var zip = new JSZip()
-                fetch("/books/Feature_Comics_111.cbz")
+                //var zip = new JSZip()
+                /*fetch("/books/Feature_Comics_111.cbz")
                     .then(res => res.blob())
                     .then(blob => zip.loadAsync(blob))
                     .then(z => z.files[Object.entries(z.files)[3][0]].async("base64"))
                     .then(d => {
                         var img = document.getElementById("comicpage")
                         img.src="data:image/png;base64," + d
+                    })*/
+                // work with archive
+                /*fetch("/books/Feature_Comics_111.cbz")
+                    .then(res => res.blob())
+                    .then(blob => {
+                        let zip = new ZipWrapper(blob)
+                        zip.getFiles().then(console.log)
+                        return zip
+                    })
+                    .then(zip => {
+                        zip.getBase64FileContents("Feature Comics 111/Feature Comics 111-01.jpg").then(b64 => {
+                            var img = document.getElementById("comicpage")
+                            img.src="data:image/png;base64," + b64
+                        })
+                    })*/
+                // work directly with comic
+                fetch("/books/Feature_Comics_111.cbz")
+                    .then(res => res.blob())
+                    .then(blob => {
+                        let zip = new ZipWrapper(blob)
+                        zip.getFiles().then(console.log)
+                        return zip
+                    })
+                    .then(zip => new ComicWrapper(zip))
+                    .then(comic => {
+                        comic.getContentsAt(7).then(b64 => {
+                            var img = document.getElementById("comicpage")
+                            img.src="data:image/png;base64," + b64
+                        })
                     })
             }
         </script>
