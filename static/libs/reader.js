@@ -132,10 +132,10 @@ class EbookWrapper {
     }
 
     async getSize() {
-        console.log("getting book size")
+        //("getting book size")
         if (this.size == undefined) {
             let spine = await this.getSpine()
-            console.log("spine: " + spine)
+            //console.log("spine: " + spine)
             let size = 0
             for (var i = 0; i < spine.length; i++) {
                 let resourceNode = await this.#getResourceNode(spine[i])
@@ -155,7 +155,7 @@ class EbookWrapper {
         }
     }
 
-    getFileFolder(filePath) {
+    getFileContext(filePath) {
         let elems = filePath.split("/")
         if (elems.length > 1) {
             return elems.slice(0, -1).join("/")
@@ -164,9 +164,9 @@ class EbookWrapper {
         }
     }
 
-    computeAbsolutePath(location, filename) {
-        if (location != null && location.length > 0) {
-            return location + "/" + filename
+    computeAbsolutePath(context, filename) {
+        if (context != null && context.length > 0) {
+            return context + "/" + filename
         } else {
             return filename
         }
@@ -174,8 +174,8 @@ class EbookWrapper {
 
     async parseOpf() {
         let opf = await this.#getOpf()
-        console.log(opf.name)
-        console.log(this.getFileFolder(opf.name))
+        //console.log(opf.name)
+        //console.log(this.getFileFolder(opf.name))
         let opfXmlText = opf.contents
         let parser = new DOMParser()
         let xmlDoc = parser.parseFromString(opfXmlText, "text/xml")
@@ -184,7 +184,7 @@ class EbookWrapper {
         let spine = Array.from(xmlDoc.getElementsByTagName("itemref")).map(element => {
             let item = xmlDoc.getElementById(element.getAttribute("idref"))
             return item.getAttribute("href")
-        }).map(element => this.computeAbsolutePath(this.getFileFolder(opf.name), element))
+        }).map(element => this.computeAbsolutePath(this.getFileContext(opf.name), element))
         this.spine = spine
         //return xmlDoc.getElementsByTagName("itemref")
         return spine
@@ -198,15 +198,19 @@ class EbookWrapper {
     }
 
     async #getResourceNode(fileName) {
-        console.log("getting resource node for " + fileName)
+        //console.log("getting resource node for " + fileName)
         if (this.node == undefined) this.node = {}
         if (this.node[fileName] === undefined) {
-            console.log("computing resource node for " + fileName)
+            //console.log("computing resource node for " + fileName)
             let xmlText = await this.archive.getTextFileContents(fileName)
-            let bookNode = EbookNode.parseHtmlToEbookNode(xmlText)
-            console.log(bookNode)
+            let bookNode = EbookNode.parseHtmlToEbookNode(xmlText, this.getFileContext(fileName), this)
+            //console.log(bookNode)
             this.node[fileName] = bookNode
         }
         return this.node[fileName]
+    }
+
+    async getImageBase64(context, fileName) {
+        return "data:image/png;base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(context, fileName)))
     }
 }
