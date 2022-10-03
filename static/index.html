@@ -61,8 +61,11 @@
                     .then(ebook => {
                         this.book = ebook
                         //ebook.parseOpf().then(res => spine = res)
-                        ebook.getSize().then(console.log)
+                        ebook.getSize().then(writeToOutput)
                     })
+            }
+            function writeToOutput(text) {
+                document.getElementById("output").innerHTML = text
             }
         </script>
     </head>
@@ -71,5 +74,6 @@
     <p>Hello.</p>
     <p>A comic <a href="/books/Feature_Comics_111.cbz">here</a>.</p>
     <p><img id="comicpage"></img></p>
+    <p id="output"></p>
 </body>
 </html>
