@@ -203,7 +203,7 @@ class EbookWrapper {
         if (this.node[fileName] === undefined) {
             console.log("computing resource node for " + fileName)
             let xmlText = await this.archive.getTextFileContents(fileName)
-            let bookNode = parse(xmlText)
+            let bookNode = EbookNode.parseHtmlToEbookNode(xmlText)
             console.log(bookNode)
             this.node[fileName] = bookNode
         }
