@@ -164,15 +164,12 @@ class EbookNode {
     async #updateImages(filename, ebook) {
         if (EbookNode.#isImage(this.name)) {
             let parser = new DOMParser()
-            console.log(this.getContent())
             let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
             let imageElement = imageDocument.getElementsByTagName(this.name)[0]
-            console.log(imageElement)
             let imagePath = imageElement.getAttribute("src")
             let base64 = await ebook.getImageBase64(filename, imagePath)
             imageElement.setAttribute("src", base64)
             this.content = imageElement.outerHTML
-            //console.log(this.content)
         } else if (this.children.length > 0) {
             for (var i = 0; i < this.children.length; i++) {
                 var child = this.children[i]
@@ -195,12 +192,10 @@ class EbookNode {
             let linkHref = linkElement.getAttribute("href")
             if (linkHref != null && linkHref.length > 0) {
                 let position = await ebook.getPositionForLink(filename, linkHref)
-                //console.log(this.getContent() + ": " + position)
                 if (position != null) {
                     linkElement.setAttribute("onclick", functionName + "(" + position + ")")
                     linkElement.removeAttribute("href")
                     this.content = linkElement.outerHTML
-                    //console.log(this.getContent())
                 }
             }
         } else if (this.children.length > 0) {
@@ -236,7 +231,6 @@ class EbookNode {
         var message = ""
         for (var i = 0; i <= level; i++) message += "\t"
         message += text
-        console.log(message)
     }
 
     prettyPrint(level = 0) {

@@ -1,13 +1,3 @@
-/*import {
-    BlobReader,
-    BlobWriter,
-    TextReader,
-    TextWriter,
-    ZipReader,
-    ZipWriter,
-  } from "zip.js";*/
-
-
 /*
 zip wrapper:
 - get list of files
@@ -47,35 +37,6 @@ class ZipWrapper {
         return this.#getFileContents(filename, "text")
     }
 }
-
-// zip wrapper based on zip js
-/*class ZipWrapper2 {
-    constructor(bytes) {
-        console.log(bytes)
-        this.data = bytes
-    }
-    async #getZip() {
-        if (this.archive == undefined) {
-            let zipFileReader = new zip.BlobReader(this.data)
-            let zipReader = new zip.ZipReader(zipFileReader)
-            this.archive = zipReader
-        }
-        return this.archive
-    }
-    async getFiles() {
-        let archive = await this.#getZip()
-        let files = await archive.getEntries()
-            //.filter(v => v[1].dir == false)
-            //.map(v => v[0])
-        return files
-    }
-    async getBase64FileContents(filename) {
-        let zip = await this.#getZip()
-        let entry = zip.files[filename]
-        let contents = await entry.async("base64")
-        return contents
-    }
-}*/
 
 /*
 comic wrapper
@@ -149,16 +110,7 @@ class EbookWrapper {
     }
 
     async getSize() {
-        //("getting book size")
         if (this.size == undefined) {
-            /*let spine = await this.getSpine()
-            //console.log("spine: " + spine)
-            let size = 0
-            for (var i = 0; i < spine.length; i++) {
-                let resourceNode = await this.#getResourceNode(spine[i])
-                size = size + resourceNode.getLength()
-            }
-            this.size = size*/
             let size = 0
             let nodes = await this.getNodes()
             for (var node in nodes) {
@@ -197,8 +149,6 @@ class EbookWrapper {
 
     async parseOpf() {
         let opf = await this.#getOpf()
-        //console.log(opf.name)
-        //console.log(this.getFileFolder(opf.name))
         let opfXmlText = opf.contents
         let parser = new DOMParser()
         let xmlDoc = parser.parseFromString(opfXmlText, "text/xml")
@@ -209,7 +159,6 @@ class EbookWrapper {
             return item.getAttribute("href")
         }).map(element => this.computeAbsolutePath(this.getContextFolder(opf.name), element))
         this.spine = spine
-        //return xmlDoc.getElementsByTagName("itemref")
         return spine
     }
 
@@ -221,17 +170,9 @@ class EbookWrapper {
     }
 
     async #getResourceNode(filename, entrancePosition) {
-        //console.log("getting resource node for " + fileName)
-        //if (this.node == undefined) this.node = {}
-        //if (this.node[filename] === undefined) {
-            //console.log("computing resource node for " + fileName)
-            let xmlText = await this.archive.getTextFileContents(filename)
-            let bookNode = await EbookNode.parseHtmlToEbookNode(xmlText, entrancePosition, filename, this)
-            return bookNode
-            //console.log(bookNode)
-            //this.node[filename] = bookNode
-        //}
-        //return this.node[filename]
+        let xmlText = await this.archive.getTextFileContents(filename)
+        let bookNode = await EbookNode.parseHtmlToEbookNode(xmlText, entrancePosition, filename, this)
+        return bookNode
     }
 
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
@@ -266,7 +207,6 @@ class EbookWrapper {
 
         let contextFolder = this.getContextFolder(contextFile)
         let absoluteLink = this.computeAbsolutePath(contextFolder, file)
-        //console.log(absoluteLink + " /// " + id)
         let nodes = await this.getNodes()
         let node = nodes[absoluteLink]
         let position = node.getIdPosition(id)
@@ -274,12 +214,8 @@ class EbookWrapper {
     }
 
     async getContentsAt(start, end) {
-        console.log("getting content between " + start + " and " + end)
         let size = await this.getSize()
-        console.log(size)
-        console.log(this.size)
         if (start < 0 || end < 0 || start > end || start >= size || end >= size) return null;
-        
 
         let nodes = await this.getNodes()
         for (var index in nodes) {
