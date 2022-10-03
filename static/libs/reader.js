@@ -203,7 +203,7 @@ class EbookWrapper {
         if (this.node[fileName] === undefined) {
             //console.log("computing resource node for " + fileName)
             let xmlText = await this.archive.getTextFileContents(fileName)
-            let bookNode = EbookNode.parseHtmlToEbookNode(xmlText, this.getFileContext(fileName), this)
+            let bookNode = await EbookNode.parseHtmlToEbookNode(xmlText, this.getFileContext(fileName), this)
             //console.log(bookNode)
             this.node[fileName] = bookNode
         }
@@ -232,5 +232,10 @@ class EbookWrapper {
 
     async getImageBase64(context, fileName) {
         return "data:" + this.#getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(context, fileName)))
+    }
+
+    async getPositionForLink(context, link) {
+        let absoluteLink = this.computeAbsolutePath(context, link)
+
     }
 }

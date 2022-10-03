@@ -2,13 +2,14 @@ class EbookNode {
     static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak"]
     static LEAF_ELEMENTS = ["img", "tr", "image"]
 
-    constructor(name, content, parent = null, children = [], start = null, end = null) {
+    constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
         this.name = name
         this.content = content
         this.parent = parent
         this.children = children
         this.start = start
         this.end = end
+        this.#parseId()
     }
 
     static #isVoidElement(tagName) {
@@ -61,6 +62,14 @@ class EbookNode {
           return html.substring(from, to)
         } else {
           return null
+        }
+    }
+
+    #parseId() {
+        let idMatch = this.content.match(/id="([^"]+)"/)
+
+        if (idMatch && idMatch[1] && idMatch[1].length > 0) {
+            this.id = idMatch[1]
         }
     }
 
@@ -173,8 +182,25 @@ class EbookNode {
     }
 
     // go through structure and replace href of links with jump to position function calls
-    #updateLinks() {
+    // done after the whole book was scanned
+    updateLinks() {
 
+    }
+
+    // find position of the id, if it exists
+    getIdPosition(id) {
+        if (this.id && this.id != null && this.id == id) {
+            return this.start
+        }
+        if (this.children.length > 0) {
+            for (var i = 0; i < this.children.length; i++) {
+                let position = this.children[i].getIdPosition(id)
+                if (position != null) {
+                    return position
+                }
+            }
+        }
+        return null
     }
 
     #addChild(node) {
