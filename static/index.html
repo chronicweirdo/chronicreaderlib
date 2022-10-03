@@ -61,11 +61,19 @@
                     .then(ebook => {
                         this.book = ebook
                         //ebook.parseOpf().then(res => spine = res)
-                        ebook.getSize().then(writeToOutput)
+                        ebook.getSize().then(size => {
+                            writeToOutput(size)
+                            let end = 6020
+                            ebook.getContentsAt(5000, end).then(writeToPage)
+                            ebook.findSpaceAfter(end).then(console.log)
+                        })
                     })
             }
             function writeToOutput(text) {
                 document.getElementById("output").innerHTML = text
+            }
+            function writeToPage(html) {
+                document.getElementById("page").innerHTML = html
             }
         </script>
     </head>
@@ -75,5 +83,6 @@
     <p>A comic <a href="/books/Feature_Comics_111.cbz">here</a>.</p>
     <p><img id="comicpage"></img></p>
     <p id="output"></p>
+    <div id="page"></div>
 </body>
 </html>

@@ -159,11 +159,12 @@ class EbookWrapper {
                 size = size + resourceNode.getLength()
             }
             this.size = size*/
-            this.size = 0;
+            let size = 0
             let nodes = await this.getNodes()
             for (var node in nodes) {
-                this.size = this.size + nodes[node].getLength()
+                size = size + nodes[node].getLength()
             }
+            this.size = size
         }
         return this.size
     }
@@ -270,5 +271,41 @@ class EbookWrapper {
         let node = nodes[absoluteLink]
         let position = node.getIdPosition(id)
         return position
+    }
+
+    async getContentsAt(start, end) {
+        console.log("getting content between " + start + " and " + end)
+        let size = await this.getSize()
+        console.log(size)
+        console.log(this.size)
+        if (start < 0 || end < 0 || start > end || start >= size || end >= size) return null;
+        
+
+        let nodes = await this.getNodes()
+        for (var index in nodes) {
+            let node = nodes[index]
+            if (node.start <= start && start <= node.end) {
+                // content is here
+                // can only retrieve content from a single section
+                let actualEnd = (end > node.end) ? node.end : end
+                return node.copy(start, actualEnd).getContent()
+            }
+        }
+        return null
+    }
+
+    async findSpaceAfter(position) {
+        let size = await this.getSize()
+        if (position < 0 || position >= size) return null
+        let nodes = await this.getNodes()
+        for (var index in nodes) {
+            let node = nodes[index]
+            if (node.start <= position && position <= node.end) {
+                // content is here
+                // can only retrieve content from a single section
+                return node.findSpaceAfter(position)
+            }
+        }
+        return null
     }
 }
