@@ -210,7 +210,27 @@ class EbookWrapper {
         return this.node[fileName]
     }
 
+    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+    #getFileMimeType(filename) {
+        let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
+        if (extension == "png" || extension == "jpeg"
+            || extension == "avif" || extension == "bmp" || extension == "gif"
+            || extension == "tiff" || extension == "webp") {
+            return "image/" + extension
+        } else if (extension == "jpg") {
+            return "image/jpeg"
+        } else if (extension == "tif") {
+            return "image/tiff"
+        } else if (extension == "svg") {
+            return "image/svg+xml"
+        } else if (extension == "ico") {
+            return "image/vnd.microsoft.icon"
+        } else {
+            return "text/plain"
+        }
+    }
+
     async getImageBase64(context, fileName) {
-        return "data:image/png;base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(context, fileName)))
+        return "data:" + this.#getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(context, fileName)))
     }
 }
