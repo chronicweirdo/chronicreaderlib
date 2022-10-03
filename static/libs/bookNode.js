@@ -41,10 +41,10 @@ class EbookNode {
         return null
     }
 
-    static parseHtmlToEbookNode(html, context, ebook) {
+    static parseHtmlToEbookNode(html, entrancePosition, filename, ebook) {
         var body = EbookNode.#getHtmlBody(html)
         if (body != null) {
-          return EbookNode.#parseBody(body, context, ebook)
+          return EbookNode.#parseBody(body, entrancePosition, filename, ebook)
         }
         return null
     }
@@ -73,7 +73,7 @@ class EbookNode {
         }
     }
 
-    static async #parseBody(body, context, ebook) {
+    static async #parseBody(body, entrancePosition, filename, ebook) {
         var bodyNode = new EbookNode("body", "")
         var current = bodyNode
       
@@ -152,8 +152,8 @@ class EbookNode {
         }
 
         bodyNode.#collapseLeaves()
-        bodyNode.#updatePositions()
-        await bodyNode.#updateImages(context, ebook)
+        bodyNode.#updatePositions(entrancePosition)
+        await bodyNode.#updateImages(filename, ebook)
         return bodyNode
     }
 
@@ -161,7 +161,7 @@ class EbookNode {
         return tagName.toLowerCase() == "img"
     }
     // go through structure and replace src of images with base64 from archive
-    async #updateImages(context, ebook) {
+    async #updateImages(filename, ebook) {
         if (EbookNode.#isImage(this.name)) {
             let parser = new DOMParser()
             console.log(this.getContent())
@@ -169,22 +169,46 @@ class EbookNode {
             let imageElement = imageDocument.getElementsByTagName(this.name)[0]
             console.log(imageElement)
             let imagePath = imageElement.getAttribute("src")
-            let base64 = await ebook.getImageBase64(context, imagePath)
+            let base64 = await ebook.getImageBase64(filename, imagePath)
             imageElement.setAttribute("src", base64)
             this.content = imageElement.outerHTML
-            console.log(this.content)
+            //console.log(this.content)
         } else if (this.children.length > 0) {
             for (var i = 0; i < this.children.length; i++) {
                 var child = this.children[i]
-                child.#updateImages(context, ebook)
+                child.#updateImages(filename, ebook)
             }
         }
     }
 
+    static #isLink(tagName) {
+        return tagName.toLowerCase() == "a"
+    }
     // go through structure and replace href of links with jump to position function calls
     // done after the whole book was scanned
-    updateLinks() {
-
+    async updateLinks(filename, ebook, functionName="jumpTo") {
+        if (EbookNode.#isLink(this.name)) {
+            let parser = new DOMParser()
+            
+            let linkDocument = parser.parseFromString(this.getContent(), "text/html")
+            let linkElement = linkDocument.getElementsByTagName(this.name)[0]
+            let linkHref = linkElement.getAttribute("href")
+            if (linkHref != null && linkHref.length > 0) {
+                let position = await ebook.getPositionForLink(filename, linkHref)
+                //console.log(this.getContent() + ": " + position)
+                if (position != null) {
+                    linkElement.setAttribute("onclick", functionName + "(" + position + ")")
+                    linkElement.removeAttribute("href")
+                    this.content = linkElement.outerHTML
+                    //console.log(this.getContent())
+                }
+            }
+        } else if (this.children.length > 0) {
+            for (var i = 0; i < this.children.length; i++) {
+                var child = this.children[i]
+                child.updateLinks(filename, ebook)
+            }
+        }
     }
 
     // find position of the id, if it exists

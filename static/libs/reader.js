@@ -131,17 +131,39 @@ class EbookWrapper {
         this.archive = archive
     }
 
+    async getNodes() {
+        if (this.nodes == undefined) {
+            this.nodes = {}
+            let spine = await this.getSpine()
+            let entrancePosition = 0
+            for (var i = 0; i < spine.length; i++) {
+                let resourceNode = await this.#getResourceNode(spine[i], entrancePosition)
+                this.nodes[spine[i]] = resourceNode
+                entrancePosition = resourceNode.end + 1
+            }
+            for (var node in this.nodes) {
+                await this.nodes[node].updateLinks(node, this)
+            }
+        }
+        return this.nodes
+    }
+
     async getSize() {
         //("getting book size")
         if (this.size == undefined) {
-            let spine = await this.getSpine()
+            /*let spine = await this.getSpine()
             //console.log("spine: " + spine)
             let size = 0
             for (var i = 0; i < spine.length; i++) {
                 let resourceNode = await this.#getResourceNode(spine[i])
                 size = size + resourceNode.getLength()
             }
-            this.size = size
+            this.size = size*/
+            this.size = 0;
+            let nodes = await this.getNodes()
+            for (var node in nodes) {
+                this.size = this.size + nodes[node].getLength()
+            }
         }
         return this.size
     }
@@ -155,8 +177,8 @@ class EbookWrapper {
         }
     }
 
-    getFileContext(filePath) {
-        let elems = filePath.split("/")
+    getContextFolder(contextFile) {
+        let elems = contextFile.split("/")
         if (elems.length > 1) {
             return elems.slice(0, -1).join("/")
         } else {
@@ -164,9 +186,9 @@ class EbookWrapper {
         }
     }
 
-    computeAbsolutePath(context, filename) {
-        if (context != null && context.length > 0) {
-            return context + "/" + filename
+    computeAbsolutePath(contextFolder, filename) {
+        if (contextFolder != null && contextFolder.length > 0) {
+            return contextFolder + "/" + filename
         } else {
             return filename
         }
@@ -184,7 +206,7 @@ class EbookWrapper {
         let spine = Array.from(xmlDoc.getElementsByTagName("itemref")).map(element => {
             let item = xmlDoc.getElementById(element.getAttribute("idref"))
             return item.getAttribute("href")
-        }).map(element => this.computeAbsolutePath(this.getFileContext(opf.name), element))
+        }).map(element => this.computeAbsolutePath(this.getContextFolder(opf.name), element))
         this.spine = spine
         //return xmlDoc.getElementsByTagName("itemref")
         return spine
@@ -197,17 +219,18 @@ class EbookWrapper {
         return this.spine
     }
 
-    async #getResourceNode(fileName) {
+    async #getResourceNode(filename, entrancePosition) {
         //console.log("getting resource node for " + fileName)
-        if (this.node == undefined) this.node = {}
-        if (this.node[fileName] === undefined) {
+        //if (this.node == undefined) this.node = {}
+        //if (this.node[filename] === undefined) {
             //console.log("computing resource node for " + fileName)
-            let xmlText = await this.archive.getTextFileContents(fileName)
-            let bookNode = await EbookNode.parseHtmlToEbookNode(xmlText, this.getFileContext(fileName), this)
+            let xmlText = await this.archive.getTextFileContents(filename)
+            let bookNode = await EbookNode.parseHtmlToEbookNode(xmlText, entrancePosition, filename, this)
+            return bookNode
             //console.log(bookNode)
-            this.node[fileName] = bookNode
-        }
-        return this.node[fileName]
+            //this.node[filename] = bookNode
+        //}
+        //return this.node[filename]
     }
 
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
@@ -230,12 +253,22 @@ class EbookWrapper {
         }
     }
 
-    async getImageBase64(context, fileName) {
-        return "data:" + this.#getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(context, fileName)))
+    async getImageBase64(contextFile, fileName) {
+        return "data:" + this.#getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)))
     }
 
-    async getPositionForLink(context, link) {
-        let absoluteLink = this.computeAbsolutePath(context, link)
+    async getPositionForLink(contextFile, link) {
+        if (link == undefined || link == null) return null
+        let linkSplit = link.split("#")
+        let file = linkSplit.length == 2 ? linkSplit[0] : contextFile
+        let id = linkSplit.length == 2 ? linkSplit[1] : linkSplit[0]
 
+        let contextFolder = this.getContextFolder(contextFile)
+        let absoluteLink = this.computeAbsolutePath(contextFolder, file)
+        //console.log(absoluteLink + " /// " + id)
+        let nodes = await this.getNodes()
+        let node = nodes[absoluteLink]
+        let position = node.getIdPosition(id)
+        return position
     }
 }
