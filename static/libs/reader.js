@@ -321,7 +321,8 @@ class EbookDisplay {
 
     #getPageSizeKey() {
         let el = this.element
-        return el.offsetHeight + "x" + el.offsetWidth
+        let fontSize = window.getComputedStyle(el, null).getPropertyValue('font-size')
+        return el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
     }
 
     #getPagesCache() {
@@ -410,31 +411,82 @@ class Page {
     }
 }
 
-class PageCache {
+class CachedObject {
     constructor(key) {
         this.key = key
-        this.pages = []
+    }
+
+    persist() {
+        window.localStorage.setItem(this.key, JSON.stringify(this.value))
+    }
+    load() {
+        let stringValue = window.localStorage.getItem(this.key)
+        if (stringValue) {
+            this.value = JSON.parse(stringValue)
+        }
+    }
+    set(value) {
+        this.value = value
+        this.persist()
+    }
+    get() {
+        if (this.value == undefined) {
+            this.load()
+        }
+        return this.value
+    }
+}
+
+class PageCache extends CachedObject {
+    constructor(key) {
+        super(key)
+    }
+
+    #getParsed() {
+        let simpleValue = this.get()
+        if (simpleValue) {
+            let actualValue = simpleValue.map(e => new Page(e[0], e[1]))
+            return actualValue
+        }
+        return undefined
+    }
+
+    #setParsed(actualValue) {
+        if (actualValue) {
+            let simpleValue = actualValue.map(e => [e.start, e.end])
+            this.set(simpleValue)
+        }
     }
 
     addPage(page) {
         // todo: verify and remove conflicts?
-        this.pages.push(page)
+        let value = this.#getParsed()
+        if (value == undefined) value = []
+        value.push(page)
+        this.#setParsed(value)
     }
 
     getPageFor(position) {
-        for (var i = 0; i < this.pages.length; i++) {
-            if (this.pages[i].contains(position)) return this.pages[i]
+        let value = this.#getParsed()
+        if (value) {
+            for (var i = 0; i < value.length; i++) {
+                if (value[i].contains(position)) return value[i]
+            }
         }
         return null
     }
 
     getEnd() {
         let end = 0
-        for (var i = 0; i < this.pages.length; i++) {
-            if (this.pages[i].end > end) {
-                end = this.pages[i].end
+        let value = this.#getParsed()
+        if (value) {
+            for (var i = 0; i < value.length; i++) {
+                if (value[i].end > end) {
+                    end = value[i].end
+                }
             }
         }
         return end
     }
 }
+
