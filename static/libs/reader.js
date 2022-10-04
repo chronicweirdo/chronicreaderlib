@@ -76,6 +76,49 @@ class ComicWrapper {
     }
 }
 
+class CachedObject {
+    constructor(key) {
+        this.key = key
+    }
+
+    #timeout(ms) {
+        return new Promise((resolve, reject) => {
+            window.setTimeout(function() {
+                resolve()
+            }, ms)
+        })
+    }
+
+    #persist(timestamp) {
+        if (timestamp == this.saveTimestamp) {
+            window.localStorage.setItem(this.key, JSON.stringify(this.value))
+        } else {
+            console.log("not saving yet")
+        }
+    }
+    load() {
+        let stringValue = window.localStorage.getItem(this.key)
+        if (stringValue) {
+            this.value = JSON.parse(stringValue)
+        }
+    }
+    set(value) {
+        this.value = value
+        let localSaveTimestamp = Date.now()
+        this.saveTimestamp = localSaveTimestamp
+        this.#timeout(100).then(() => {
+            this.#persist(localSaveTimestamp)
+        })
+        
+    }
+    get() {
+        if (this.value == undefined) {
+            this.load()
+        }
+        return this.value
+    }
+}
+
 /*
 ebook wrapper
 - contains a zip wrapper
@@ -87,26 +130,52 @@ ebook wrapper
 - get contents for resource path as text or bytes
 */
 
-class EbookWrapper {
+class EbookWrapper extends CachedObject {
     constructor(archive) {
+        super("book")
         this.archive = archive
     }
 
+    #getParsed() {
+        let simpleValue = this.get()
+        if (simpleValue) {
+            let complexValue = {}
+            for (var name in simpleValue) {
+                complexValue[name] = EbookNode.expand(simpleValue[name])
+            }
+            return complexValue
+        }
+        return undefined
+    }
+
+    #setParsed(complexValue) {
+        if (complexValue) {
+            let simpleValue = {}
+            for (var name in complexValue) {
+                simpleValue[name] = complexValue[name].simplify()
+            }
+            this.set(simpleValue)
+        }
+    }
+
     async getNodes() {
-        if (this.nodes == undefined) {
-            this.nodes = {}
+        let nodes = this.#getParsed()
+        if (nodes == undefined) {
+            nodes = {}
             let spine = await this.getSpine()
             let entrancePosition = 0
             for (var i = 0; i < spine.length; i++) {
                 let resourceNode = await this.#getResourceNode(spine[i], entrancePosition)
-                this.nodes[spine[i]] = resourceNode
+                nodes[spine[i]] = resourceNode
                 entrancePosition = resourceNode.end + 1
             }
             for (var node in this.nodes) {
                 await this.nodes[node].updateLinks(node, this)
             }
+            console.log(nodes)
+            this.#setParsed(nodes)
         }
-        return this.nodes
+        return nodes
     }
 
     async getSize() {
@@ -408,32 +477,6 @@ class Page {
 
     contains(position) {
         return this.start <= position && position <= this.end
-    }
-}
-
-class CachedObject {
-    constructor(key) {
-        this.key = key
-    }
-
-    persist() {
-        window.localStorage.setItem(this.key, JSON.stringify(this.value))
-    }
-    load() {
-        let stringValue = window.localStorage.getItem(this.key)
-        if (stringValue) {
-            this.value = JSON.parse(stringValue)
-        }
-    }
-    set(value) {
-        this.value = value
-        this.persist()
-    }
-    get() {
-        if (this.value == undefined) {
-            this.load()
-        }
-        return this.value
     }
 }
 

@@ -504,16 +504,31 @@ class EbookNode {
     }
 
     // todo: remove this?
-    static convert(object) {
-        var node = new EbookNode(object.name, object.content)
-        node.start = object.start
-        node.end = object.end
-        for (var i = 0; i < object.children.length; i++) {
-            var childNode = EbookNode.convert(object.children[i])
-            childNode.parent = node
-            node.children.push(childNode)
+    static expand(object) {
+        if (object && object != null) {
+            var node = new EbookNode(object.name, object.content)
+            node.start = object.start
+            node.end = object.end
+            for (var i = 0; i < object.children.length; i++) {
+                var childNode = EbookNode.expand(object.children[i])
+                childNode.parent = node
+                node.children.push(childNode)
+            }
+            return node
+        } else return null
+    }
+
+    simplify() {
+        var output = {}
+        output.name = this.name
+        output.content = this.content
+        output.start = this.start
+        output.end = this.end
+        output.children = []
+        for (var i = 0; i < this.children.length; i++) {
+            output.children.push(this.children[i].simplify())
         }
-        return node
+        return output
     }
 
     getResources() {
