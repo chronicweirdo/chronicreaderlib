@@ -76,7 +76,7 @@ class ComicWrapper {
     }
 }
 
-class CachedObject {
+/*class CachedObject {
     constructor(key) {
         this.key = key
     }
@@ -117,7 +117,7 @@ class CachedObject {
         }
         return this.value
     }
-}
+}*/
 
 /*
 ebook wrapper
@@ -130,15 +130,19 @@ ebook wrapper
 - get contents for resource path as text or bytes
 */
 
-class EbookWrapper extends CachedObject {
+class EbookWrapper /*extends CachedObject*/ {
     constructor(archive) {
-        super("book")
         this.archive = archive
     }
 
-    #getParsed() {
-        let simpleValue = this.get()
+    #getNodesCacheKey() {
+        return "book"
+    }
+
+    #deserializeNodes() {
+        let simpleValue = window.localStorage.getItem(this.#getNodesCacheKey())
         if (simpleValue) {
+            simpleValue = JSON.parse(simpleValue)
             let complexValue = {}
             for (var name in simpleValue) {
                 complexValue[name] = EbookNode.expand(simpleValue[name])
@@ -148,34 +152,35 @@ class EbookWrapper extends CachedObject {
         return undefined
     }
 
-    #setParsed(complexValue) {
-        if (complexValue) {
+    #serializeNodes() {
+        if (this.nodes) {
             let simpleValue = {}
-            for (var name in complexValue) {
-                simpleValue[name] = complexValue[name].simplify()
+            for (var name in this.nodes) {
+                simpleValue[name] = this.nodes[name].simplify()
             }
-            this.set(simpleValue)
+            window.localStorage.setItem(this.#getNodesCacheKey(), JSON.stringify(simpleValue))
         }
     }
 
     async getNodes() {
-        let nodes = this.#getParsed()
-        if (nodes == undefined) {
-            nodes = {}
+        if (this.nodes == undefined) {
+            this.nodes = this.#deserializeNodes()
+        }
+        if (this.nodes == undefined) {
+            this.nodes = {}
             let spine = await this.getSpine()
             let entrancePosition = 0
             for (var i = 0; i < spine.length; i++) {
                 let resourceNode = await this.#getResourceNode(spine[i], entrancePosition)
-                nodes[spine[i]] = resourceNode
+                this.nodes[spine[i]] = resourceNode
                 entrancePosition = resourceNode.end + 1
             }
             for (var node in this.nodes) {
                 await this.nodes[node].updateLinks(node, this)
             }
-            console.log(nodes)
-            this.#setParsed(nodes)
+            this.#serializeNodes()
         }
-        return nodes
+        return this.nodes
     }
 
     async getSize() {
@@ -394,15 +399,26 @@ class EbookDisplay {
         return el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
     }
 
+    #deserializePageCache(pageCacheKey) {
+        let simpleValue = window.localStorage.getItem(pageCacheKey)
+        return PageCache.deserialize(pageCacheKey, simpleValue)
+    }
+
+    #serializePageCache(pageCache) {
+        window.localStorage.setItem(pageCache.key, pageCache.serialize())
+    }
+
     #getPagesCache() {
         if (this.pages == undefined) this.pages = {}
         let pageCacheKey = this.#getPageSizeKey()
-        let pageCache = this.pages[pageCacheKey]
-        if (pageCache == undefined) {
+        if (this.pages[pageCacheKey] == undefined) {
+            this.pages[pageCacheKey] = this.#deserializePageCache(pageCacheKey)
+        }
+        /*if (this.pages[pageCacheKey] == undefined) {
             pageCache = new PageCache(pageCacheKey)
             this.pages[pageCacheKey] = pageCache
-        }
-        return pageCache
+        }*/
+        return this.pages[pageCacheKey]
     }
 
     async #getPageFor(position) {
@@ -459,6 +475,7 @@ class EbookDisplay {
             currentPageCache = this.#getPagesCache()
             await this.#timeout(10)
         }
+        this.#serializePageCache(originalPageCache)
         if (originalPageCache != currentPageCache) {
             console.log("stopping computation because page cache changed")
             return null
@@ -480,40 +497,42 @@ class Page {
     }
 }
 
-class PageCache extends CachedObject {
+class PageCache /*extends CachedObject*/ {
     constructor(key) {
-        super(key)
+        this.key = key
     }
 
-    #getParsed() {
-        let simpleValue = this.get()
+    static deserialize(key, simpleValue) {
+        let pageCache = new PageCache(key)
         if (simpleValue) {
+            simpleValue = JSON.parse(simpleValue)
             let actualValue = simpleValue.map(e => new Page(e[0], e[1]))
-            return actualValue
+            pageCache.value = actualValue
+        } else {
+            pageCache.value = []
         }
-        return undefined
+        return pageCache
     }
 
-    #setParsed(actualValue) {
-        if (actualValue) {
-            let simpleValue = actualValue.map(e => [e.start, e.end])
-            this.set(simpleValue)
+    serialize() {
+        if (this.value) {
+            let simpleValue = this.value.map(e => [e.start, e.end])
+            return JSON.stringify(simpleValue)
+        } else {
+            return []
         }
     }
 
     addPage(page) {
         // todo: verify and remove conflicts?
-        let value = this.#getParsed()
-        if (value == undefined) value = []
-        value.push(page)
-        this.#setParsed(value)
+        if (this.value == undefined) this.value = []
+        this.value.push(page)
     }
 
     getPageFor(position) {
-        let value = this.#getParsed()
-        if (value) {
-            for (var i = 0; i < value.length; i++) {
-                if (value[i].contains(position)) return value[i]
+        if (this.value) {
+            for (var i = 0; i < this.value.length; i++) {
+                if (this.value[i].contains(position)) return this.value[i]
             }
         }
         return null
@@ -521,11 +540,10 @@ class PageCache extends CachedObject {
 
     getEnd() {
         let end = 0
-        let value = this.#getParsed()
-        if (value) {
-            for (var i = 0; i < value.length; i++) {
-                if (value[i].end > end) {
-                    end = value[i].end
+        if (this.value) {
+            for (var i = 0; i < this.value.length; i++) {
+                if (this.value[i].end > end) {
+                    end = this.value[i].end
                 }
             }
         }
