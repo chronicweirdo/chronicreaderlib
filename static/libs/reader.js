@@ -245,3 +245,157 @@ class EbookWrapper {
         return null
     }
 }
+
+class EbookDisplay {
+    constructor(element, ebook, startPosition = 0) {
+        this.element = element
+        this.ebook = ebook
+        this.position = startPosition
+        this.createShadowComponent()
+        this.displayPageFor(startPosition).then(value => {
+            console.log("computing rest of pages " + value)
+            this.ebook.getSize()
+                .then(size => this.#getPageFor(size)
+                    .then((page) => 
+                        console.log("computed final page " + page.start + " - " + page.end)
+                    )
+                )
+        })
+    }
+
+    createShadowComponent() {
+        let shadowElement = this.element.cloneNode(false)
+        shadowElement.id = this.element.id + "_shadow"
+        shadowElement.style.visibility = "hidden"
+        shadowElement.style.overflow = "auto"
+        let parent = this.element.parentElement
+        parent.appendChild(shadowElement)
+        this.shadowElement = shadowElement
+    }
+
+    async displayPageFor(position) {
+        let page = await this.#getPageFor(position)
+        this.element.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
+        await this.#timeout(10)
+        return null
+    }
+
+    #timeout(ms) {
+        return new Promise((resolve, reject) => {
+            window.setTimeout(function() {
+                resolve()
+            }, ms)
+        })
+    }
+
+    #getPageSizeKey() {
+        return "pagesize"
+    }
+
+    #getPagesCache() {
+        if (this.pages == undefined) this.pages = {}
+        let pageCacheKey = this.#getPageSizeKey()
+        let pageCache = this.pages[pageCacheKey]
+        if (pageCache == undefined) {
+            pageCache = new PageCache(pageCacheKey)
+            this.pages[pageCacheKey] = pageCache
+        }
+        return pageCache
+    }
+
+    async #getPageFor(position) {
+        //console.log("get page for " + position)
+        let pageCache = this.#getPagesCache()
+        let page = pageCache.getPageFor(position)      
+        if (page == null) {
+            let computedPage = await this.#computePageFor(position)
+            return computedPage
+        } else {
+            return page
+        }
+    }
+    
+    async #overflowTriggerred() {
+        let el = this.shadowElement
+        if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) return true
+        else return false
+    }
+
+    async #computeMaximalPage(start) {
+        let previousEnd = null
+        let end = await this.ebook.findSpaceAfter(start)
+        this.shadowElement.innerHTML = ""
+        //console.log("first end " + end)
+        while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
+            previousEnd = end
+            end = await this.ebook.findSpaceAfter(previousEnd)
+            //console.log("new end " + end)
+            this.shadowElement.innerHTML = await this.ebook.getContentsAt(start, end)
+        }
+        if (previousEnd != null) {
+            return new Page(start, previousEnd)
+        } else {
+            return new Page(start, start)
+        }
+    }
+
+    async #computePageFor(position) {
+        //console.log("compute page for " + position)
+        let pageCache = this.#getPagesCache()
+        let start = pageCache.getEnd()
+        if (start > 0) start = start + 1
+        //console.log("starting at " + start)
+        let page = await this.#computeMaximalPage(start)
+        pageCache.addPage(page)
+        while (! page.contains(position)) {
+            let newStart = page.end + 1
+            //console.log("compute page starting at " + newStart)
+            page = await this.#computeMaximalPage(newStart)
+            //console.log("found page " + page.start + " " + page.end)
+            pageCache.addPage(page)
+            await this.#timeout(10)
+        }
+        return page
+    }
+
+}
+
+class Page {
+    constructor(start, end) {
+        this.start = start
+        this.end = end
+    }
+
+    contains(position) {
+        return this.start <= position && position <= this.end
+    }
+}
+
+class PageCache {
+    constructor(key) {
+        this.key = key
+        this.pages = []
+    }
+
+    addPage(page) {
+        // todo: verify and remove conflicts?
+        this.pages.push(page)
+    }
+
+    getPageFor(position) {
+        for (var i = 0; i < this.pages.length; i++) {
+            if (this.pages[i].contains(position)) return this.pages[i]
+        }
+        return null
+    }
+
+    getEnd() {
+        let end = 0
+        for (var i = 0; i < this.pages.length; i++) {
+            if (this.pages[i].end > end) {
+                end = this.pages[i].end
+            }
+        }
+        return end
+    }
+}
