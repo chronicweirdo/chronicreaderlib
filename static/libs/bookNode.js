@@ -181,6 +181,9 @@ class EbookNode {
     static #isLink(tagName) {
         return tagName.toLowerCase() == "a"
     }
+    static #getOnlyStartingTag(elem) {
+        return elem.innerHTML ? elem.outerHTML.slice(0,elem.outerHTML.indexOf(elem.innerHTML)) : elem.outerHTML
+    }
     // go through structure and replace href of links with jump to position function calls
     // done after the whole book was scanned
     async updateLinks(filename, ebook, functionName="jumpTo") {
@@ -195,7 +198,7 @@ class EbookNode {
                 if (position != null) {
                     linkElement.setAttribute("onclick", functionName + "(" + position + ")")
                     linkElement.removeAttribute("href")
-                    this.content = linkElement.outerHTML
+                    this.content = EbookNode.#getOnlyStartingTag(linkElement)
                 }
             }
         } else if (this.children.length > 0) {
