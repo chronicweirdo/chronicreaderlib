@@ -275,9 +275,23 @@ class EbookDisplay {
 
     async displayPageFor(position) {
         let page = await this.#getPageFor(position)
+        this.currentPage = page
         this.element.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
         await this.#timeout(10)
         return null
+    }
+
+    async nextPage() {
+        let size = await this.ebook.getSize()
+        if (this.currentPage && this.currentPage.end < size) {
+            this.displayPageFor(this.currentPage.end + 1)
+        }
+    }
+
+    async previousPage() {
+        if (this.currentPage && this.currentPage.start > 0) {
+            this.displayPageFor(this.currentPage.start - 1)
+        }
     }
 
     #timeout(ms) {
@@ -340,7 +354,7 @@ class EbookDisplay {
     }
 
     async #computePageFor(position) {
-        //console.log("compute page for " + position)
+        console.log("compute page for " + position)
         let pageCache = this.#getPagesCache()
         let start = pageCache.getEnd()
         if (start > 0) start = start + 1
