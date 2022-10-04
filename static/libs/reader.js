@@ -249,18 +249,33 @@ class EbookWrapper {
 class EbookDisplay {
     constructor(element, ebook, startPosition = 0) {
         this.element = element
+        //this.element.onresize = this.handleResize
         this.ebook = ebook
         this.position = startPosition
         this.createShadowComponent()
         this.displayPageFor(startPosition).then(value => {
             console.log("computing rest of pages " + value)
-            this.ebook.getSize()
-                .then(size => this.#getPageFor(size)
-                    .then((page) => 
-                        console.log("computed final page " + page.start + " - " + page.end)
-                    )
-                )
+            this.triggerComputationForAllPages()
         })
+    }
+
+    async refresh() {
+        console.log("handling resize " + this.currentPage)
+        if (this.currentPage) {
+            this.displayPageFor(this.currentPage.start).then(value => {
+                console.log("computing rest of pages " + value)
+                this.triggerComputationForAllPages()
+            })
+        }
+    }
+
+    triggerComputationForAllPages() {
+        this.ebook.getSize()
+            .then(size => this.#getPageFor(size)
+                .then((page) => {
+                    if (page != null) console.log("computed final page " + page.start + " - " + page.end)
+                })
+            )
     }
 
     createShadowComponent() {
@@ -275,10 +290,12 @@ class EbookDisplay {
 
     async displayPageFor(position) {
         let page = await this.#getPageFor(position)
-        this.currentPage = page
-        this.element.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
-        await this.#timeout(10)
-        return null
+        if (page != null) {
+            this.currentPage = page
+            this.element.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
+            await this.#timeout(10)
+        }
+        return page
     }
 
     async nextPage() {
@@ -303,7 +320,8 @@ class EbookDisplay {
     }
 
     #getPageSizeKey() {
-        return "pagesize"
+        let el = this.element
+        return el.offsetHeight + "x" + el.offsetWidth
     }
 
     #getPagesCache() {
@@ -355,21 +373,28 @@ class EbookDisplay {
 
     async #computePageFor(position) {
         console.log("compute page for " + position)
-        let pageCache = this.#getPagesCache()
-        let start = pageCache.getEnd()
+        let originalPageCache = this.#getPagesCache()
+        let currentPageCache = originalPageCache
+        let start = originalPageCache.getEnd()
         if (start > 0) start = start + 1
         //console.log("starting at " + start)
         let page = await this.#computeMaximalPage(start)
-        pageCache.addPage(page)
-        while (! page.contains(position)) {
+        originalPageCache.addPage(page)
+        while (! page.contains(position) && originalPageCache == currentPageCache) {
             let newStart = page.end + 1
             //console.log("compute page starting at " + newStart)
             page = await this.#computeMaximalPage(newStart)
             //console.log("found page " + page.start + " " + page.end)
-            pageCache.addPage(page)
+            originalPageCache.addPage(page)
+            currentPageCache = this.#getPagesCache()
             await this.#timeout(10)
         }
-        return page
+        if (originalPageCache != currentPageCache) {
+            console.log("stopping computation because page cache changed")
+            return null
+        } else {
+            return page
+        }
     }
 
 }

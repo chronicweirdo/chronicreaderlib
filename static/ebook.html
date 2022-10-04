@@ -15,9 +15,12 @@
                 .then(blob => new ZipWrapper(blob))
                 .then(zip => new EbookWrapper(zip))
                 .then(ebook => {
-                    bookDisplay = new EbookDisplay(document.getElementById("page"), ebook, 0)
+                    bookDisplay = new EbookDisplay(document.getElementById("page"), ebook, 3500)
                 })
         }
+        window.addEventListener('resize', function() {
+            bookDisplay.refresh()
+        }, true)
     </script>
     <style>
         body {
