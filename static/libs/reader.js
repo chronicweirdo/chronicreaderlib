@@ -1,3 +1,89 @@
+
+
+class Database {
+    constructor(name, version) {
+        this.name = name
+        this.version = version
+        this.#getDb()
+    }
+
+    #getDb() {
+        return new Promise((resolve, reject) => {
+            let openRequest = indexedDB.open(this.name, this.version)
+            openRequest.onupgradeneeded = () => {
+                // triggers if the client had no database
+                // ...perform initialization...
+                console.log("upgrade needed")
+                let db = openRequest.result
+                if (!db.objectStoreNames.contains('comics')) {
+                    db.createObjectStore('comics', {keyPath: 'key'})
+                }
+                resolve(db)
+            }
+            openRequest.onerror = () => {
+                console.error("error", openRequest.error)
+                reject()
+            }
+            openRequest.onsuccess = () => {
+                let db = openRequest.result
+                // continue working with database using db object
+                resolve(db)
+            }
+        })
+    }
+
+    async save(table, value) {
+        let db = await this.#getDb()
+        let transaction = db.transaction([table])
+        let store = transaction.objectStore(table)
+
+        await store.put(value)
+
+        await transaction.complete
+        console.log("saved " + value)
+
+        db.close()
+        return value
+    }
+
+    async load(table, id) {
+        let db = await this.#getDb()
+        let transaction = db.transaction([table])
+        let objectStore = transaction.objectStore(table)
+        let result = await objectStore.get(id)
+        if (result) {
+            return result
+        } else {
+            return null
+        }
+        await transaction.complete
+        db.close()
+    }
+}
+
+var db = new Database("chronicreader", 1)
+
+
+
+async function storeComicPage(key, page) {
+    let transaction = db.transaction("comics", "readWrite")
+    let comics = transaction.objectStore("comics")
+    let comicPage = {
+        "key": key,
+        "page": page
+    }
+    let request = comics.add(comicPage)
+    
+    request.onsuccess = function() {
+        console.log("comic page added to the store", request.result)
+    }
+  
+    request.onerror = function() {
+        console.log("error", request.error)
+    }
+}
+
+
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
 function getFileMimeType(filename) {
     let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
@@ -104,46 +190,66 @@ class ComicDisplay {
         this.element = element
         this.comic = comic
         this.position = startPosition
-        this.displayPageFor(startPosition).then(() => this.cachePages(startPosition))
+        this.displayPageFor(startPosition)//.then(() => this.cachePages(startPosition))
     }
 
     async displayPageFor(position) {
+        console.log("display page " + position)
         let pageContent = await this.#getPageFor(position)
         this.element.src = pageContent
     }
 
     async #getPageFor(position) {
-        let page = await this.#getPageFromCache()
+        /*let page = await this.#getPageFromCache()
         if (page) {
             return page
         } else {
             let page = await this.#extractAndStorePage(position)
             return page
-        }
-    }
-
-    async #extractAndStorePage(position) {
+        }*/
         let page = await this.comic.getContentsAt(position)
-        if (this.pages == undefined) this.pages = {}
-        this.pages[position] = page
-        window.localStorage.setItem(this.#getPagesCacheKey(position), page)
         return page
     }
 
-    #getPagesCacheKey(position) {
-        return "comicpages_" + position
+    async nextPage() {
+        let size = await this.comic.getSize()
+        console.log(size)
+        if (this.position < size - 1) {
+            console.log("increasing position")
+            this.position = this.position + 1
+            this.displayPageFor(this.position)
+        }
     }
 
-    async #getPageFromCache(position) {
+    async previousPage() {
+        if (this.position > 0) {
+            this.position = this.position - 1
+            this.displayPageFor(this.position)
+        }
+    }
+
+    /*async #extractAndStorePage(position) {
+        let page = await this.comic.getContentsAt(position)
+        if (this.pages == undefined) this.pages = {}
+        this.pages[position] = page
+        db.save("comics", { "key": this.#getPagesCacheKey(position), "value": page})
+        return page
+    }*/
+
+    /*#getPagesCacheKey(position) {
+        return "comicpages_" + position
+    }*/
+
+    /*async #getPageFromCache(position) {
         if (this.pages == undefined) this.pages = {}
         if (this.pages[position] == undefined) {
-            let page = window.localStorage.getItem(this.#getPagesCacheKey(position))
+            let page = db.load("comics", this.#getPagesCacheKey(position))
             if (page) this.pages[position] = page
         }
         return this.pages[position]
-    }
+    }*/
 
-    async cachePages(startPosition) {
+    /*async cachePages(startPosition) {
         let size = await this.comic.getSize()
         let dim = Math.max(size - startPosition, startPosition)
         for (var i = 0; i < dim; i++) {
@@ -155,7 +261,7 @@ class ComicDisplay {
             }
         }
         console.log("done caching all pages")
-    }
+    }*/
 }
 
 /*
