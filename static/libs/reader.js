@@ -113,9 +113,9 @@ class ComicDisplay {
     }
 
     async #getPageFor(position) {
-        let pagesCache = await this.#getPagesCache()
-        if (pagesCache[position]) {
-            return pagesCache[position]
+        let page = await this.#getPageFromCache()
+        if (page) {
+            return page
         } else {
             let page = await this.#extractAndStorePage(position)
             return page
@@ -124,34 +124,23 @@ class ComicDisplay {
 
     async #extractAndStorePage(position) {
         let page = await this.comic.getContentsAt(position)
-        let pagesCache = await this.#getPagesCache()
-        pagesCache[position] = page
-        this.#serializePagesCache()
+        if (this.pages == undefined) this.pages = {}
+        this.pages[position] = page
+        window.localStorage.setItem(this.#getPagesCacheKey(position), page)
         return page
     }
 
-    #getPagesCacheKey() {
-        return "comicpages"
+    #getPagesCacheKey(position) {
+        return "comicpages_" + position
     }
 
-    async #getPagesCache() {
-        if (this.pages == undefined) {
-            let localStorageContents = window.localStorage.getItem(this.#getPagesCacheKey())
-            if (localStorageContents) {
-                this.pages = JSON.parse(localStorageContents)
-            }
+    async #getPageFromCache(position) {
+        if (this.pages == undefined) this.pages = {}
+        if (this.pages[position] == undefined) {
+            let page = window.localStorage.getItem(this.#getPagesCacheKey(position))
+            if (page) this.pages[position] = page
         }
-        if (this.pages == undefined) {
-            this.pages = {}
-        }
-        return this.pages
-    }
-
-    async #serializePagesCache() {
-        let pagesCache = await this.#getPagesCache()
-        if (pagesCache) {
-            window.localStorage.setItem(this.#getPagesCacheKey(), JSON.stringify(pagesCache))
-        }
+        return this.pages[position]
     }
 
     async cachePages(startPosition) {
