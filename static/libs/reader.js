@@ -333,14 +333,24 @@ class EbookDisplay {
         })
     }
 
+    async #delayedRefresh(timestamp) {
+        if (timestamp == this.refreshTimestamp) {
+            if (this.currentPage) {
+                this.displayPageFor(this.currentPage.start).then(value => {
+                    console.log("computing rest of pages " + value)
+                    this.triggerComputationForAllPages()
+                })
+            }
+        } else {
+            console.log("not refreshing, newer refresh exists")
+        }
+    }
+
     async refresh() {
         console.log("handling resize " + this.currentPage)
-        if (this.currentPage) {
-            this.displayPageFor(this.currentPage.start).then(value => {
-                console.log("computing rest of pages " + value)
-                this.triggerComputationForAllPages()
-            })
-        }
+        let ts = Date.now()
+        this.refreshTimestamp = ts
+        this.#timeout(100).then(() => this.#delayedRefresh(ts))
     }
 
     triggerComputationForAllPages() {
@@ -458,29 +468,43 @@ class EbookDisplay {
     }
 
     async #computePageFor(position) {
-        console.log("compute page for " + position)
-        let originalPageCache = this.#getPagesCache()
-        let currentPageCache = originalPageCache
-        let start = originalPageCache.getEnd()
-        if (start > 0) start = start + 1
-        //console.log("starting at " + start)
-        let page = await this.#computeMaximalPage(start)
-        originalPageCache.addPage(page)
-        while (! page.contains(position) && originalPageCache == currentPageCache) {
-            let newStart = page.end + 1
-            //console.log("compute page starting at " + newStart)
-            page = await this.#computeMaximalPage(newStart)
-            //console.log("found page " + page.start + " " + page.end)
+        if (this.computationInProgress == undefined || this.computationInProgress == false) {
+            this.computationInProgress = true
+            console.log("compute page for " + position)
+            let originalPageCache = this.#getPagesCache()
+            let currentPageCache = originalPageCache
+            let start = originalPageCache.getEnd()
+            if (start > 0) start = start + 1
+            //console.log("starting at " + start)
+            let page = await this.#computeMaximalPage(start)
             originalPageCache.addPage(page)
-            currentPageCache = this.#getPagesCache()
-            await this.#timeout(10)
-        }
-        this.#serializePageCache(originalPageCache)
-        if (originalPageCache != currentPageCache) {
-            console.log("stopping computation because page cache changed")
-            return null
+            let lastSavedTimestamp = Date.now()
+            while (! page.contains(position) && originalPageCache == currentPageCache) {
+                let newStart = page.end + 1
+                //console.log("compute page starting at " + newStart)
+                page = await this.#computeMaximalPage(newStart)
+                //console.log("found page " + page.start + " " + page.end)
+                originalPageCache.addPage(page)
+                if (Date.now() - lastSavedTimestamp > 30000) {
+                    console.log("intermediary serialize page cache")
+                    this.#serializePageCache(originalPageCache)
+                    lastSavedTimestamp = Date.now()
+                }
+                currentPageCache = this.#getPagesCache()
+                await this.#timeout(10)
+            }
+            this.#serializePageCache(originalPageCache)
+            if (originalPageCache != currentPageCache) {
+                console.log("stopping computation because page cache changed")
+                this.computationInProgress = false
+                return null
+            } else {
+                this.computationInProgress = false
+                return page
+            }
         } else {
-            return page
+            console.log("not starting computation, already in progress")
+            return null
         }
     }
 
