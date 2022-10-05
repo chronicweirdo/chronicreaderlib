@@ -1,3 +1,23 @@
+// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+function getFileMimeType(filename) {
+    let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
+    if (extension == "png" || extension == "jpeg"
+        || extension == "avif" || extension == "bmp" || extension == "gif"
+        || extension == "tiff" || extension == "webp") {
+        return "image/" + extension
+    } else if (extension == "jpg") {
+        return "image/jpeg"
+    } else if (extension == "tif") {
+        return "image/tiff"
+    } else if (extension == "svg") {
+        return "image/svg+xml"
+    } else if (extension == "ico") {
+        return "image/vnd.microsoft.icon"
+    } else {
+        return "text/plain"
+    }
+}
+
 /*
 zip wrapper:
 - get list of files
@@ -69,55 +89,85 @@ class ComicWrapper {
     async getContentsAt(position) {
         if (position >= 0 && position < await this.getSize()) {
             let files = await this.archive.getFiles()
-            return await this.archive.getBase64FileContents(files[position])
+            let file = files[position]
+            console.log(file)
+            let contents = await this.archive.getBase64FileContents(file)
+            return "data:" + getFileMimeType(file) + ";base64," + contents
         } else {
             return null
         }
     }
 }
 
-/*class CachedObject {
-    constructor(key) {
-        this.key = key
+class ComicDisplay {
+    constructor(element, comic, startPosition = 0) {
+        this.element = element
+        this.comic = comic
+        this.position = startPosition
+        this.displayPageFor(startPosition).then(() => this.cachePages(startPosition))
     }
 
-    #timeout(ms) {
-        return new Promise((resolve, reject) => {
-            window.setTimeout(function() {
-                resolve()
-            }, ms)
-        })
+    async displayPageFor(position) {
+        let pageContent = await this.#getPageFor(position)
+        this.element.src = pageContent
     }
 
-    #persist(timestamp) {
-        if (timestamp == this.saveTimestamp) {
-            window.localStorage.setItem(this.key, JSON.stringify(this.value))
+    async #getPageFor(position) {
+        let pagesCache = await this.#getPagesCache()
+        if (pagesCache[position]) {
+            return pagesCache[position]
         } else {
-            console.log("not saving yet")
+            let page = await this.#extractAndStorePage(position)
+            return page
         }
     }
-    load() {
-        let stringValue = window.localStorage.getItem(this.key)
-        if (stringValue) {
-            this.value = JSON.parse(stringValue)
+
+    async #extractAndStorePage(position) {
+        let page = await this.comic.getContentsAt(position)
+        let pagesCache = await this.#getPagesCache()
+        pagesCache[position] = page
+        this.#serializePagesCache()
+        return page
+    }
+
+    #getPagesCacheKey() {
+        return "comicpages"
+    }
+
+    async #getPagesCache() {
+        if (this.pages == undefined) {
+            let localStorageContents = window.localStorage.getItem(this.#getPagesCacheKey())
+            if (localStorageContents) {
+                this.pages = JSON.parse(localStorageContents)
+            }
+        }
+        if (this.pages == undefined) {
+            this.pages = {}
+        }
+        return this.pages
+    }
+
+    async #serializePagesCache() {
+        let pagesCache = await this.#getPagesCache()
+        if (pagesCache) {
+            window.localStorage.setItem(this.#getPagesCacheKey(), JSON.stringify(pagesCache))
         }
     }
-    set(value) {
-        this.value = value
-        let localSaveTimestamp = Date.now()
-        this.saveTimestamp = localSaveTimestamp
-        this.#timeout(100).then(() => {
-            this.#persist(localSaveTimestamp)
-        })
-        
-    }
-    get() {
-        if (this.value == undefined) {
-            this.load()
+
+    async cachePages(startPosition) {
+        let size = await this.comic.getSize()
+        let dim = Math.max(size - startPosition, startPosition)
+        for (var i = 0; i < dim; i++) {
+            if (startPosition + i < size) {
+                let page = await this.#getPageFor(startPosition + i)
+            }
+            if (startPosition - i >= 0) {
+                let page = await this.#getPageFor(startPosition - i)
+            }
         }
-        return this.value
+        console.log("done caching all pages")
     }
-}*/
+}
 
 /*
 ebook wrapper
@@ -249,28 +299,10 @@ class EbookWrapper /*extends CachedObject*/ {
         return bookNode
     }
 
-    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-    #getFileMimeType(filename) {
-        let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
-        if (extension == "png" || extension == "jpeg"
-            || extension == "avif" || extension == "bmp" || extension == "gif"
-            || extension == "tiff" || extension == "webp") {
-            return "image/" + extension
-        } else if (extension == "jpg") {
-            return "image/jpeg"
-        } else if (extension == "tif") {
-            return "image/tiff"
-        } else if (extension == "svg") {
-            return "image/svg+xml"
-        } else if (extension == "ico") {
-            return "image/vnd.microsoft.icon"
-        } else {
-            return "text/plain"
-        }
-    }
+    
 
     async getImageBase64(contextFile, fileName) {
-        return "data:" + this.#getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)))
+        return "data:" + getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)))
     }
 
     async getPositionForLink(contextFile, link) {
@@ -325,7 +357,7 @@ class EbookDisplay {
         this.element = element
         //this.element.onresize = this.handleResize
         this.ebook = ebook
-        this.position = startPosition
+        //this.position = startPosition
         this.createShadowComponent()
         this.displayPageFor(startPosition).then(value => {
             console.log("computing rest of pages " + value)

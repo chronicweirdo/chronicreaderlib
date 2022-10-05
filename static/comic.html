@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="/libs/jszip.js"></script>
+    <!--script src="/libs/zip.js"></script-->
+    <script src="/libs/bookNode.js"></script>
+    <script src="/libs/reader.js"></script>
+    <script>
+        var bookUrl = "/books/Feature_Comics_111.cbz"
+        var book;
+        var bookDisplay;
+        window.onload = function() {
+            fetch(bookUrl)
+                .then(res => res.blob())
+                .then(blob => new ZipWrapper(blob))
+                .then(zip => new ComicWrapper(zip))
+                .then(comic => {
+                    bookDisplay = new ComicDisplay(document.getElementById("page"), comic, 0)
+                })
+        }
+        /*window.addEventListener('resize', function() {
+            bookDisplay.refresh()
+        }, true)*/
+    </script>
+    <style>
+        body {
+            overflow: hidden;
+            /*font-size: 2em;*/
+        }
+        .page {
+            position: fixed;
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            background-color: #cc9999;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <img id="page" src=""/>
+</body>
+</html>
