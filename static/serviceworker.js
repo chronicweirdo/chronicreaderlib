@@ -1,5 +1,9 @@
 importScripts('/libs/bookNode.js')
 importScripts('/libs/reader.js')
+importScripts('/libs/database.js')
+
+const DATABASE_NAME = "chronicreader"
+const DATABASE_VERSION = "2"
 
 self.addEventListener('install', e => {
     console.log("installing service worker")
@@ -14,7 +18,7 @@ self.addEventListener('fetch', e => {
         console.log(path)
         
         e.respondWith(loadBook(e.request))
-    }
+    } else {
     /*if (url.pathname === '/markProgress') {
         e.respondWith(handleMarkProgress(e.request))
     } else if (url.pathname === '/loadProgress') {
@@ -41,15 +45,27 @@ self.addEventListener('fetch', e => {
         e.respondWith(fetch(e.request))
     }*/
 
-    e.respondWith(fetch(e.request))
+        e.respondWith(fetch(e.request))
+    }
 })
 
-function loadBook(request) {
-    // check if book in cache
-    // load book from server
-    let bookResponse = fetch(request)
-    // store book to cache
-    return bookResponse
+async function loadBook(request) {
+    try {
+        // check if book in cache
+        let db = new Database(DATABASE_NAME, DATABASE_VERSION)
+        let book = await db.load("book", "1")
+        if (book == null) {
+            // load book from server
+            let bookResponse = await fetch(request)
+            // store book to cache
+            let headers = Object.fromEntries(bookResponse.headers.entries())
+            let blob = await bookResponse.blob()
+            book = await db.save("book", "1", {"headers": headers, "body": blob})
+        }
+        return new Response(book.body, {headers: new Headers(book.headers)})
+    } catch (e) {
+        console.log(e)
+    }
 }
 
 /*function getComicContent(id, position) {

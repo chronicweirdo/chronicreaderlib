@@ -1,71 +1,4 @@
-
-
-class Database {
-    constructor(name, version) {
-        this.name = name
-        this.version = version
-        this.#getDb()
-    }
-
-    #getDb() {
-        return new Promise((resolve, reject) => {
-            let openRequest = indexedDB.open(this.name, this.version)
-            openRequest.onupgradeneeded = () => {
-                // triggers if the client had no database
-                // ...perform initialization...
-                console.log("upgrade needed")
-                let db = openRequest.result
-                if (!db.objectStoreNames.contains('comics')) {
-                    db.createObjectStore('comics', {keyPath: 'key'})
-                }
-                resolve(db)
-            }
-            openRequest.onerror = () => {
-                console.error("error", openRequest.error)
-                reject()
-            }
-            openRequest.onsuccess = () => {
-                let db = openRequest.result
-                // continue working with database using db object
-                resolve(db)
-            }
-        })
-    }
-
-    async save(table, value) {
-        let db = await this.#getDb()
-        let transaction = db.transaction([table])
-        let store = transaction.objectStore(table)
-
-        await store.put(value)
-
-        await transaction.complete
-        console.log("saved " + value)
-
-        db.close()
-        return value
-    }
-
-    async load(table, id) {
-        let db = await this.#getDb()
-        let transaction = db.transaction([table])
-        let objectStore = transaction.objectStore(table)
-        let result = await objectStore.get(id)
-        if (result) {
-            return result
-        } else {
-            return null
-        }
-        await transaction.complete
-        db.close()
-    }
-}
-
-var db = new Database("chronicreader", 1)
-
-
-
-async function storeComicPage(key, page) {
+/*async function storeComicPage(key, page) {
     let transaction = db.transaction("comics", "readWrite")
     let comics = transaction.objectStore("comics")
     let comicPage = {
@@ -81,7 +14,7 @@ async function storeComicPage(key, page) {
     request.onerror = function() {
         console.log("error", request.error)
     }
-}
+}*/
 
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
