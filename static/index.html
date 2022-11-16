@@ -1,62 +1,38 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <script src="/libs/jszip.js"></script>
-        <!--script src="/libs/zip.js"></script-->
-        <script src="/libs/bookNode.js"></script>
-        <script src="/libs/reader.js"></script>
-        <script>
-            var book;
-            window.onload = function() {
-                /*fetch("/books/Feature_Comics_111.cbz")
-                    .then(res => res.blob())
-                    .then(blob => {
-                        let zip = new ZipWrapper(blob)
-                        //zip.getFiles().then(console.log)
-                        return zip
-                    })
-                    .then(zip => new ComicWrapper(zip))
-                    .then(comic => {
-                        comic.getContentsAt(7).then(b64 => {
-                            var img = document.getElementById("comicpage")
-                            img.src="data:image/png;base64," + b64
-                        })
-                    })*/
-                
-                
-                fetch("/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub")
-                    .then(res => res.blob())
-                    .then(blob => {
-                        let zip = new ZipWrapper(blob)
-                        //zip.getFiles().then(console.log)
-                        return zip
-                    })
-                    .then(zip => new EbookWrapper(zip))
-                    .then(ebook => {
-                        this.book = ebook
-                        //ebook.parseOpf().then(res => spine = res)
-                        ebook.getSize().then(size => {
-                            writeToOutput(size)
-                            let end = 6020
-                            ebook.getContentsAt(5000, end).then(writeToPage)
-                            ebook.findSpaceAfter(end).then(console.log)
-                        })
-                    })
-            }
-            function writeToOutput(text) {
-                document.getElementById("output").innerHTML = text
-            }
-            function writeToPage(html) {
-                document.getElementById("page").innerHTML = html
-            }
-        </script>
-    </head>
+<head>
+    <script src="/libs/jszip.js"></script>
+    <script src="/libs/bookNode.js"></script>
+    <script src="/libs/reader.js"></script>
+    <script>
+        //var bookUrl = "/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub"
+        var bookUrl = "/books/Feature_Comics_111.cbz"
+        var book;
+        var bookDisplay;
+        window.onload = function() {
+            new ChronicReader(bookUrl, document.getElementById("page"))
+        }
+        window.addEventListener('resize', function() {
+            bookDisplay.refresh()
+        }, true)
+    </script>
+    <style>
+        body {
+            overflow: hidden;
+            /*font-size: 2em;*/
+        }
+        .page {
+            position: fixed;
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            background-color: #cc9999;
+            overflow: hidden;
+        }
+    </style>
+</head>
 <body>
-    <h1>Simple static web server</h1>
-    <p>Hello.</p>
-    <p>A comic <a href="/books/Feature_Comics_111.cbz">here</a>.</p>
-    <p><img id="comicpage"></img></p>
-    <p id="output"></p>
-    <div id="page"></div>
+    <div id="page" class="page"></div>
 </body>
 </html>
