@@ -16,10 +16,16 @@
     }
 }*/
 
+//const { inherits } = require("util")
+
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-function getFileMimeType(filename) {
+function getFileExtension(filename) {
     let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
+    return extension
+}
+function getFileMimeType(filename) {
+    let extension = getFileExtension(filename)
     if (extension == "png" || extension == "jpeg"
         || extension == "avif" || extension == "bmp" || extension == "gif"
         || extension == "tiff" || extension == "webp") {
@@ -129,7 +135,10 @@ class ComicDisplay {
     async displayPageFor(position) {
         console.log("display page " + position)
         let pageContent = await this.#getPageFor(position)
-        this.element.src = pageContent
+        this.element.innerHTML = ""
+        let img = document.createElement("img")
+        img.src = pageContent
+        this.element.appendChild(img)
     }
 
     async #getPageFor(position) {
@@ -635,3 +644,42 @@ class PageCache /*extends CachedObject*/ {
     }
 }
 
+class ChronicReader {
+    constructor(url, element, settings = {}) {
+        this.url = url
+        this.element = element
+        this.settings = settings
+        this.#init()
+    }
+
+    #init() {
+        let extension = getFileExtension(this.url)
+        let type = ""
+        if (extension == "epub") {
+            type = "book"
+        } else if (extension == "cbr" || extension == "cbz") {
+            type = "comic"
+        }
+
+        fetch(bookUrl)
+            .then(res => res.blob())
+            .then(blob => new ZipWrapper(blob))
+            .then(zip => {
+                if (type == "book") {
+                    return new EbookWrapper(zip)
+                } else if (type == "comic") {
+                    return new ComicWrapper(zip)
+                } else {
+                    return null
+                }
+            }).then(wrapper => {
+                if (wrapper) {
+                    if (type == "book") {
+                        this.display = new EbookDisplay(this.element, wrapper, 3500)
+                    } else if (type == "comic") {
+                        this.display = new ComicDisplay(this.element, wrapper, 0)
+                    }
+                }
+            })
+    }
+}
