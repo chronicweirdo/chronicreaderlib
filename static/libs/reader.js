@@ -245,37 +245,7 @@ class EbookWrapper /*extends CachedObject*/ {
         this.archive = archive
     }
 
-    #getNodesCacheKey() {
-        return "book"
-    }
-
-    #deserializeNodes() {
-        let simpleValue = window.localStorage.getItem(this.#getNodesCacheKey())
-        if (simpleValue) {
-            simpleValue = JSON.parse(simpleValue)
-            let complexValue = {}
-            for (var name in simpleValue) {
-                complexValue[name] = EbookNode.expand(simpleValue[name])
-            }
-            return complexValue
-        }
-        return undefined
-    }
-
-    #serializeNodes() {
-        if (this.nodes) {
-            let simpleValue = {}
-            for (var name in this.nodes) {
-                simpleValue[name] = this.nodes[name].simplify()
-            }
-            window.localStorage.setItem(this.#getNodesCacheKey(), JSON.stringify(simpleValue))
-        }
-    }
-
     async getNodes() {
-        if (this.nodes == undefined) {
-            this.nodes = this.#deserializeNodes()
-        }
         if (this.nodes == undefined) {
             this.nodes = {}
             let spine = await this.getSpine()
@@ -288,7 +258,6 @@ class EbookWrapper /*extends CachedObject*/ {
             for (var node in this.nodes) {
                 await this.nodes[node].updateLinks(node, this)
             }
-            this.#serializeNodes()
         }
         return this.nodes
     }
