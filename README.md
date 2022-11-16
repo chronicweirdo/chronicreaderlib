@@ -1,2 +1,3 @@
 # chronicreader
-new versions of the chronic reader project
+
+Embeddable web library for loading and displaying EPUB, CBR and CBZ files.
