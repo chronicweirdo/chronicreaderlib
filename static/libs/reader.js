@@ -20,6 +20,9 @@
 
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+
+var chronicReaderInstance = null
+
 function getFileExtension(filename) {
     let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
     return extension
@@ -706,6 +709,7 @@ class ChronicReader {
         this.element = element
         this.settings = settings
         this.#init()
+        chronicReaderInstance = this
     }
 
     #init() {
@@ -737,5 +741,17 @@ class ChronicReader {
                     }
                 }
             })
+    }
+
+    displayPageFor(position) {
+        if (this.display) {
+            this.display.displayPageFor(position)
+        }
+    }
+}
+
+function jumpTo(position) {
+    if (chronicReaderInstance) {
+        chronicReaderInstance.displayPageFor(position)
     }
 }
