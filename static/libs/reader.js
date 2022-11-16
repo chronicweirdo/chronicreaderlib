@@ -42,6 +42,17 @@ function getFileMimeType(filename) {
         return "text/plain"
     }
 }
+function createDivElement(parent, left, top, width, height, color) {
+    let element = document.createElement("div")
+    element.style.position = "absolute"
+    element.style.top = top
+    element.style.left = left
+    element.style.width = width
+    element.style.height = height
+    element.style.backgroundColor = color
+    parent.appendChild(element)
+    return element
+}
 
 /*
 zip wrapper:
@@ -129,16 +140,28 @@ class ComicDisplay {
         this.element = element
         this.comic = comic
         this.position = startPosition
+        this.#buildUI()
         this.displayPageFor(startPosition)//.then(() => this.cachePages(startPosition))
+    }
+
+    #buildUI() {
+        //this.element.style.position = "fixed"
+        this.element.innerHTML = ""
+        this.page = document.createElement("img")
+        this.element.appendChild(this.page)
+        this.previous = createDivElement(this.element, 0, 0, "10%", "90%", "#ff000055")
+        this.previous.onclick = () => { this.previousPage() }
+        this.next = createDivElement(this.element, "90%", 0, "10%", "90%", "#00ff0055")
+        this.next.onclick = () => { this.nextPage() }
+        this.toolsLeft = createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff55")
+        this.toolsRight = createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff55")
+        this.gestureControls = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffff0055")
     }
 
     async displayPageFor(position) {
         console.log("display page " + position)
         let pageContent = await this.#getPageFor(position)
-        this.element.innerHTML = ""
-        let img = document.createElement("img")
-        img.src = pageContent
-        this.element.appendChild(img)
+        this.page.src = pageContent
     }
 
     async #getPageFor(position) {
@@ -432,28 +455,19 @@ class EbookDisplay {
             )
     }
 
-    #createDivElement(parent, left, top, width, height, color) {
-        let element = document.createElement("div")
-        element.style.position = "absolute"
-        element.style.top = top
-        element.style.left = left
-        element.style.width = width
-        element.style.height = height
-        element.style.backgroundColor = color
-        parent.appendChild(element)
-        return element
-    }
+    
 
     #buildUI() {
         //this.element.style.position = "fixed"
-        this.previous = this.#createDivElement(this.element, 0, 0, "10%", "90%", "#ff0000")
+        this.element.innerHTML = ""
+        this.previous = createDivElement(this.element, 0, 0, "10%", "90%", "#ff0000")
         this.previous.onclick = () => { this.previousPage() }
-        this.next = this.#createDivElement(this.element, "90%", 0, "10%", "90%", "#00ff00")
+        this.next = createDivElement(this.element, "90%", 0, "10%", "90%", "#00ff00")
         this.next.onclick = () => { this.nextPage() }
-        this.toolsLeft = this.#createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff")
-        this.toolsRight = this.#createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff")
-        this.page = this.#createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
-        this.shadowPage = this.#createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.toolsLeft = createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff")
+        this.toolsRight = createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff")
+        this.page = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.shadowPage = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
