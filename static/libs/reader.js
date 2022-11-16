@@ -661,7 +661,7 @@ class ChronicReader {
             type = "comic"
         }
 
-        fetch(bookUrl)
+        fetch(this.url)
             .then(res => res.blob())
             .then(blob => new ZipWrapper(blob))
             .then(zip => {
