@@ -395,7 +395,8 @@ class EbookDisplay {
         //this.element.onresize = this.handleResize
         this.ebook = ebook
         //this.position = startPosition
-        this.createShadowComponent()
+        //this.createShadowComponent()
+        this.#buildUI()
         this.displayPageFor(startPosition).then(value => {
             console.log("computing rest of pages " + value)
             this.triggerComputationForAllPages()
@@ -431,7 +432,34 @@ class EbookDisplay {
             )
     }
 
-    createShadowComponent() {
+    #createDivElement(parent, left, top, width, height, color) {
+        let element = document.createElement("div")
+        element.style.position = "absolute"
+        element.style.top = top
+        element.style.left = left
+        element.style.width = width
+        element.style.height = height
+        element.style.backgroundColor = color
+        parent.appendChild(element)
+        return element
+    }
+
+    #buildUI() {
+        //this.element.style.position = "fixed"
+        this.previous = this.#createDivElement(this.element, 0, 0, "10%", "90%", "#ff0000")
+        this.previous.onclick = () => { this.previousPage() }
+        this.next = this.#createDivElement(this.element, "90%", 0, "10%", "90%", "#00ff00")
+        this.next.onclick = () => { this.nextPage() }
+        this.toolsLeft = this.#createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff")
+        this.toolsRight = this.#createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff")
+        this.page = this.#createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.shadowPage = this.#createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.shadowPage.style.visibility = "hidden"
+        this.shadowPage.style.overflow = "auto"
+        this.shadowElement = this.shadowPage
+    }
+
+    /*createShadowComponent() {
         let shadowElement = this.element.cloneNode(false)
         shadowElement.id = this.element.id + "_shadow"
         shadowElement.style.visibility = "hidden"
@@ -439,13 +467,13 @@ class EbookDisplay {
         let parent = this.element.parentElement
         parent.appendChild(shadowElement)
         this.shadowElement = shadowElement
-    }
+    }*/
 
     async displayPageFor(position) {
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
-            this.element.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
+            this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
             await this.#timeout(10)
         }
         return page
