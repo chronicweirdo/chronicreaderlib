@@ -1,9 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <!--script src="/libs/serviceworkerinstall.js"></script-->
     <script src="/libs/jszip.js"></script>
-    <!--script src="/libs/zip.js"></script-->
     <script src="/libs/bookNode.js"></script>
     <script src="/libs/reader.js"></script>
     <script>
@@ -13,13 +11,6 @@
         var bookDisplay;
         window.onload = function() {
             new ChronicReader(bookUrl, document.getElementById("page"))
-            /*fetch(bookUrl)
-                .then(res => res.blob())
-                .then(blob => new ZipWrapper(blob))
-                .then(zip => new EbookWrapper(zip))
-                .then(ebook => {
-                    bookDisplay = new EbookDisplay(document.getElementById("page"), ebook, 3500)
-                })*/
         }
         window.addEventListener('resize', function() {
             bookDisplay.refresh()
