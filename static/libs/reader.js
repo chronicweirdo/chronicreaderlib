@@ -283,6 +283,15 @@ class EbookWrapper /*extends CachedObject*/ {
         }
     }
 
+    async #getNcx() {
+        let files = await this.archive.getFiles()
+        let ncxFile = files.find(f => f.toLowerCase().endsWith(".ncx"))
+        return {
+            'name': ncxFile,
+            'contents': await this.archive.getTextFileContents(ncxFile)
+        }
+    }
+
     getContextFolder(contextFile) {
         let elems = contextFile.split("/")
         if (elems.length > 1) {
@@ -315,11 +324,46 @@ class EbookWrapper /*extends CachedObject*/ {
         return spine
     }
 
+    async parseNcx() {
+        let ncx = await this.#getNcx()
+        let ncxXmlText = ncx.contents
+        let parser = new DOMParser()
+        let xmlDoc = parser.parseFromString(ncxXmlText, "text/xml")
+
+        let navPoints = Array.from(xmlDoc.getElementsByTagName("navPoint"))
+        let toc = []
+        for (let i = 0; i < navPoints.length; i++) {
+            let element = navPoints[i]
+            let playOrder = element.getAttribute("playOrder")
+            let name = element.getElementsByTagName("navLabel")[0].getElementsByTagName("text")[0].innerHTML
+            let content = element.getElementsByTagName("content")[0]
+            let contentSrc = content.getAttribute("src")
+            //let absoluteContentSrc = this.computeAbsolutePath(this.getContextFolder(ncx.name), contentSrc)
+            //console.log(absoluteContentSrc)
+            let position = await this.getPositionForLink(ncx.name, contentSrc)
+            toc.push({
+                'name': name,
+                'order': playOrder,
+                'position': position
+            })
+        }
+        this.toc = toc
+        return toc
+    }
+
     async getSpine() {
         if (this.spine == undefined) {
             await this.parseOpf()
         }
+        console.log(this.spine)
         return this.spine
+    }
+
+    async getToc() {
+        if (this.toc == undefined) {
+            await this.parseNcx()
+        }
+        return this.toc
     }
 
     async #getResourceNode(filename, entrancePosition) {
@@ -390,6 +434,7 @@ class EbookDisplay {
         //this.createShadowComponent()
         this.#buildUI()
         this.displayPageFor(startPosition).then(value => {
+            this.ebook.getToc().then(console.log)
             console.log("computing rest of pages " + value)
             this.triggerComputationForAllPages()
         })

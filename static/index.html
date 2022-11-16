@@ -11,7 +11,8 @@
         var bookDisplay;
         function displayBook() {
             console.log(urls[index])
-            new ChronicReader(urls[index], document.getElementById("page"))
+            let reader = new ChronicReader(urls[index], document.getElementById("page"))
+            
         }
         function displayNextBook() {
             index = index + 1
