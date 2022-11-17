@@ -195,14 +195,15 @@ class EbookWrapper {
 
     async getNodes() {
         if (this.nodes == undefined) {
-            this.nodes = {}
             let spine = await this.getSpine()
             let entrancePosition = 0
+            let nodes = {}
             for (var i = 0; i < spine.length; i++) {
                 let resourceNode = await this.#getResourceNode(spine[i], entrancePosition)
-                this.nodes[spine[i]] = resourceNode
+                nodes[spine[i]] = resourceNode
                 entrancePosition = resourceNode.end + 1
             }
+            this.nodes = nodes
         }
         return this.nodes
     }
@@ -329,9 +330,12 @@ class EbookWrapper {
         let contextFolder = this.getContextFolder(contextFile)
         let absoluteLink = this.computeAbsolutePath(contextFolder, file)
         let nodes = await this.getNodes()
-        let node = nodes[absoluteLink]
-        let position = node.getIdPosition(id)
-        return position
+        if (nodes) {
+            let node = nodes[absoluteLink]
+            let position = node.getIdPosition(id)
+            return position
+        }
+        return null
     }
 
     async getNodeAt(position) {
@@ -433,10 +437,12 @@ class EbookDisplay {
         this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
         this.toolsRight.onclick = () => {this.tools.style.display = "block"}
         this.tools.onclick = () => {this.tools.style.display = "none"}
+        this.#buildToolsUI()
     }
 
     async #buildToolsUI() {
-
+        let toc = await this.ebook.getToc()
+        console.log(toc)
     }
 
     async fixLinks(contextFilename) {

@@ -187,7 +187,7 @@ class EbookNode {
     // go through structure and replace href of links with jump to position function calls
     // done after the whole book was scanned
     // or even better done only when displaying the page
-    async updateLinks(filename, ebook, functionName="jumpTo") {
+    /*async updateLinks(filename, ebook, functionName="jumpTo") {
         if (EbookNode.#isLink(this.name)) {
             let parser = new DOMParser()
             
@@ -208,7 +208,7 @@ class EbookNode {
                 await child.updateLinks(filename, ebook)
             }
         }
-    }
+    }*/
 
     // find position of the id, if it exists
     getIdPosition(id) {
