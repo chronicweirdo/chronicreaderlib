@@ -1,24 +1,3 @@
-/*async function storeComicPage(key, page) {
-    let transaction = db.transaction("comics", "readWrite")
-    let comics = transaction.objectStore("comics")
-    let comicPage = {
-        "key": key,
-        "page": page
-    }
-    let request = comics.add(comicPage)
-    
-    request.onsuccess = function() {
-        console.log("comic page added to the store", request.result)
-    }
-  
-    request.onerror = function() {
-        console.log("error", request.error)
-    }
-}*/
-
-//const { inherits } = require("util")
-
-
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
 
 var chronicReaderInstance = null
@@ -137,7 +116,6 @@ class ComicWrapper {
         if (position >= 0 && position < await this.getSize()) {
             let files = await this.archive.getFiles()
             let file = files[position]
-            console.log(file)
             let contents = await this.archive.getBase64FileContents(file)
             return "data:" + getFileMimeType(file) + ";base64," + contents
         } else {
@@ -152,7 +130,7 @@ class ComicDisplay {
         this.comic = comic
         this.position = startPosition
         this.#buildUI()
-        this.displayPageFor(startPosition)//.then(() => this.cachePages(startPosition))
+        this.displayPageFor(startPosition)
     }
 
     #buildUI() {
@@ -170,28 +148,18 @@ class ComicDisplay {
     }
 
     async displayPageFor(position) {
-        console.log("display page " + position)
         let pageContent = await this.#getPageFor(position)
         this.page.src = pageContent
     }
 
     async #getPageFor(position) {
-        /*let page = await this.#getPageFromCache()
-        if (page) {
-            return page
-        } else {
-            let page = await this.#extractAndStorePage(position)
-            return page
-        }*/
         let page = await this.comic.getContentsAt(position)
         return page
     }
 
     async nextPage() {
         let size = await this.comic.getSize()
-        console.log(size)
         if (this.position < size - 1) {
-            console.log("increasing position")
             this.position = this.position + 1
             this.displayPageFor(this.position)
         }
@@ -203,41 +171,6 @@ class ComicDisplay {
             this.displayPageFor(this.position)
         }
     }
-
-    /*async #extractAndStorePage(position) {
-        let page = await this.comic.getContentsAt(position)
-        if (this.pages == undefined) this.pages = {}
-        this.pages[position] = page
-        db.save("comics", { "key": this.#getPagesCacheKey(position), "value": page})
-        return page
-    }*/
-
-    /*#getPagesCacheKey(position) {
-        return "comicpages_" + position
-    }*/
-
-    /*async #getPageFromCache(position) {
-        if (this.pages == undefined) this.pages = {}
-        if (this.pages[position] == undefined) {
-            let page = db.load("comics", this.#getPagesCacheKey(position))
-            if (page) this.pages[position] = page
-        }
-        return this.pages[position]
-    }*/
-
-    /*async cachePages(startPosition) {
-        let size = await this.comic.getSize()
-        let dim = Math.max(size - startPosition, startPosition)
-        for (var i = 0; i < dim; i++) {
-            if (startPosition + i < size) {
-                let page = await this.#getPageFor(startPosition + i)
-            }
-            if (startPosition - i >= 0) {
-                let page = await this.#getPageFor(startPosition - i)
-            }
-        }
-        console.log("done caching all pages")
-    }*/
 }
 
 /*
@@ -251,7 +184,7 @@ ebook wrapper
 - get contents for resource path as text or bytes
 */
 
-class EbookWrapper /*extends CachedObject*/ {
+class EbookWrapper {
     constructor(archive) {
         this.archive = archive
     }
@@ -270,9 +203,6 @@ class EbookWrapper /*extends CachedObject*/ {
                 this.nodes[spine[i]] = resourceNode
                 entrancePosition = resourceNode.end + 1
             }
-            /*for (var node in this.nodes) {
-                await this.nodes[node].updateLinks(node, this)
-            }*/
         }
         return this.nodes
     }
@@ -353,9 +283,6 @@ class EbookWrapper /*extends CachedObject*/ {
             let name = element.getElementsByTagName("navLabel")[0].getElementsByTagName("text")[0].innerHTML
             let content = element.getElementsByTagName("content")[0]
             let contentSrc = content.getAttribute("src")
-            //let absoluteContentSrc = this.computeAbsolutePath(this.getContextFolder(ncx.name), contentSrc)
-            //console.log(absoluteContentSrc)
-            console.log(contentSrc)
             let position = await this.getPositionForLink(ncx.name, contentSrc)
             toc.push({
                 'name': name,
@@ -371,7 +298,6 @@ class EbookWrapper /*extends CachedObject*/ {
         if (this.spine == undefined) {
             await this.parseOpf()
         }
-        console.log(this.spine)
         return this.spine
     }
 
@@ -408,24 +334,27 @@ class EbookWrapper /*extends CachedObject*/ {
         return position
     }
 
-    async getContentsAt(start, end, withUpdatedLinks = false) {
-        let size = await this.getSize()
-        if (start < 0 || end < 0 || start > end || start >= size || end >= size) return null;
-
+    async getNodeAt(position) {
         let nodes = await this.getNodes()
         for (var index in nodes) {
             let node = nodes[index]
+            if (node.start <= position && position <= node.end) {
+                return { "key": index, "node": node}
+            }
+        }
+        return null
+    }
+
+    async getContentsAt(start, end) {
+        let size = await this.getSize()
+        if (start < 0 || end < 0 || start > end || start >= size || end >= size) return null;
+
+        let nodeResult = await this.getNodeAt(start)
+        if (nodeResult) {
+            let node = nodeResult.node
             if (node.start <= start && start <= node.end) {
-                // content is here
-                // can only retrieve content from a single section
                 let actualEnd = (end > node.end) ? node.end : end
-                let nodeCopy = node.copy(start, actualEnd)
-                if (withUpdatedLinks) {
-                    console.log("updating links for " + index)
-                    await nodeCopy.updateLinks(index, this)
-                }
-                let content = nodeCopy.getContent()
-                return content
+                return node.copy(start, actualEnd).getContent()
             }
         }
         return null
@@ -438,8 +367,6 @@ class EbookWrapper /*extends CachedObject*/ {
         for (var index in nodes) {
             let node = nodes[index]
             if (node.start <= position && position <= node.end) {
-                // content is here
-                // can only retrieve content from a single section
                 return node.findSpaceAfter(position)
             }
         }
@@ -450,14 +377,10 @@ class EbookWrapper /*extends CachedObject*/ {
 class EbookDisplay {
     constructor(element, ebook, startPosition = 0) {
         this.element = element
-        //this.element.onresize = this.handleResize
         this.ebook = ebook
-        //this.position = startPosition
-        //this.createShadowComponent()
         this.#buildUI()
         this.displayPageFor(startPosition).then(value => {
-            this.ebook.getToc().then(console.log)
-            console.log("computing rest of pages " + value)
+            //this.ebook.getToc().then(console.log)
             this.triggerComputationForAllPages()
         })
     }
@@ -466,7 +389,6 @@ class EbookDisplay {
         if (timestamp == this.refreshTimestamp) {
             if (this.currentPage) {
                 this.displayPageFor(this.currentPage.start).then(value => {
-                    console.log("computing rest of pages " + value)
                     this.triggerComputationForAllPages()
                 })
             }
@@ -476,7 +398,6 @@ class EbookDisplay {
     }
 
     async refresh() {
-        console.log("handling resize " + this.currentPage)
         let ts = Date.now()
         this.refreshTimestamp = ts
         this.#timeout(100).then(() => this.#delayedRefresh(ts))
@@ -518,21 +439,28 @@ class EbookDisplay {
 
     }
 
-    /*createShadowComponent() {
-        let shadowElement = this.element.cloneNode(false)
-        shadowElement.id = this.element.id + "_shadow"
-        shadowElement.style.visibility = "hidden"
-        shadowElement.style.overflow = "auto"
-        let parent = this.element.parentElement
-        parent.appendChild(shadowElement)
-        this.shadowElement = shadowElement
-    }*/
+    async fixLinks(contextFilename) {
+        let links = this.page.getElementsByTagName("a")
+        for (let i = 0; i < links.length; i++) {
+            let linkElement = links[i]
+            let linkHref = linkElement.getAttribute("href")
+            if (linkHref != null && linkHref.length > 0) {
+                let position = await this.ebook.getPositionForLink(contextFilename, linkHref)
+                if (position != null) {
+                    linkElement.onclick = () => this.displayPageFor(position)
+                    linkElement.removeAttribute("href")
+                }
+            }
+        }
+    }
 
     async displayPageFor(position) {
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
-            this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end, true)
+            this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
+            let node = await this.ebook.getNodeAt(page.start)
+            this.fixLinks(node.key)
             await this.#timeout(10)
         }
         return page
@@ -581,15 +509,10 @@ class EbookDisplay {
         if (this.pages[pageCacheKey] == undefined) {
             this.pages[pageCacheKey] = this.#deserializePageCache(pageCacheKey)
         }
-        /*if (this.pages[pageCacheKey] == undefined) {
-            pageCache = new PageCache(pageCacheKey)
-            this.pages[pageCacheKey] = pageCache
-        }*/
         return this.pages[pageCacheKey]
     }
 
     async #getPageFor(position) {
-        //console.log("get page for " + position)
         let pageCache = this.#getPagesCache()
         let page = pageCache.getPageFor(position)      
         if (page == null) {
@@ -610,11 +533,9 @@ class EbookDisplay {
         let previousEnd = null
         let end = await this.ebook.findSpaceAfter(start)
         this.shadowElement.innerHTML = ""
-        //console.log("first end " + end)
         while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
             previousEnd = end
             end = await this.ebook.findSpaceAfter(previousEnd)
-            //console.log("new end " + end)
             this.shadowElement.innerHTML = await this.ebook.getContentsAt(start, end)
         }
         if (previousEnd != null) {
@@ -627,23 +548,18 @@ class EbookDisplay {
     async #computePageFor(position) {
         if (this.computationInProgress == undefined || this.computationInProgress == false) {
             this.computationInProgress = true
-            console.log("compute page for " + position)
             let originalPageCache = this.#getPagesCache()
             let currentPageCache = originalPageCache
             let start = originalPageCache.getEnd()
             if (start > 0) start = start + 1
-            //console.log("starting at " + start)
             let page = await this.#computeMaximalPage(start)
             originalPageCache.addPage(page)
             let lastSavedTimestamp = Date.now()
             while (! page.contains(position) && originalPageCache == currentPageCache) {
                 let newStart = page.end + 1
-                //console.log("compute page starting at " + newStart)
                 page = await this.#computeMaximalPage(newStart)
-                //console.log("found page " + page.start + " " + page.end)
                 originalPageCache.addPage(page)
                 if (Date.now() - lastSavedTimestamp > 30000) {
-                    console.log("intermediary serialize page cache")
                     this.#serializePageCache(originalPageCache)
                     lastSavedTimestamp = Date.now()
                 }
@@ -652,7 +568,6 @@ class EbookDisplay {
             }
             this.#serializePageCache(originalPageCache)
             if (originalPageCache != currentPageCache) {
-                console.log("stopping computation because page cache changed")
                 this.computationInProgress = false
                 return null
             } else {
@@ -678,7 +593,7 @@ class Page {
     }
 }
 
-class PageCache /*extends CachedObject*/ {
+class PageCache {
     constructor(key) {
         this.key = key
     }
