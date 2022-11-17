@@ -64,8 +64,12 @@ zip wrapper:
 */
 
 class ZipWrapper {
-    constructor(bytes) {
+    constructor(url, bytes) {
+        this.url = url
         this.data = bytes
+    }
+    getUrl() {
+        return this.url
     }
     async #getZip() {
         if (this.zip == undefined) {
@@ -109,6 +113,10 @@ comic wrapper
 class ComicWrapper {
     constructor(archive) {
         this.archive = archive
+    }
+
+    getUrl() {
+        return this.archive.getUrl()
     }
 
     async getSize() {
@@ -248,6 +256,10 @@ class EbookWrapper /*extends CachedObject*/ {
         this.archive = archive
     }
 
+    getUrl() {
+        return this.archive.getUrl()
+    }
+
     async getNodes() {
         if (this.nodes == undefined) {
             this.nodes = {}
@@ -258,9 +270,9 @@ class EbookWrapper /*extends CachedObject*/ {
                 this.nodes[spine[i]] = resourceNode
                 entrancePosition = resourceNode.end + 1
             }
-            for (var node in this.nodes) {
+            /*for (var node in this.nodes) {
                 await this.nodes[node].updateLinks(node, this)
-            }
+            }*/
         }
         return this.nodes
     }
@@ -343,6 +355,7 @@ class EbookWrapper /*extends CachedObject*/ {
             let contentSrc = content.getAttribute("src")
             //let absoluteContentSrc = this.computeAbsolutePath(this.getContextFolder(ncx.name), contentSrc)
             //console.log(absoluteContentSrc)
+            console.log(contentSrc)
             let position = await this.getPositionForLink(ncx.name, contentSrc)
             toc.push({
                 'name': name,
@@ -395,7 +408,7 @@ class EbookWrapper /*extends CachedObject*/ {
         return position
     }
 
-    async getContentsAt(start, end) {
+    async getContentsAt(start, end, withUpdatedLinks = false) {
         let size = await this.getSize()
         if (start < 0 || end < 0 || start > end || start >= size || end >= size) return null;
 
@@ -406,7 +419,13 @@ class EbookWrapper /*extends CachedObject*/ {
                 // content is here
                 // can only retrieve content from a single section
                 let actualEnd = (end > node.end) ? node.end : end
-                return node.copy(start, actualEnd).getContent()
+                let nodeCopy = node.copy(start, actualEnd)
+                if (withUpdatedLinks) {
+                    console.log("updating links for " + index)
+                    await nodeCopy.updateLinks(index, this)
+                }
+                let content = nodeCopy.getContent()
+                return content
             }
         }
         return null
@@ -488,6 +507,15 @@ class EbookDisplay {
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
+        this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#1a1a1a55")
+        this.tools.style.display = "none"
+        this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
+        this.toolsRight.onclick = () => {this.tools.style.display = "block"}
+        this.tools.onclick = () => {this.tools.style.display = "none"}
+    }
+
+    async #buildToolsUI() {
+
     }
 
     /*createShadowComponent() {
@@ -504,7 +532,7 @@ class EbookDisplay {
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
-            this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
+            this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end, true)
             await this.#timeout(10)
         }
         return page
@@ -532,9 +560,10 @@ class EbookDisplay {
     }
 
     #getPageSizeKey() {
+        let url = this.ebook.getUrl()
         let el = this.element
         let fontSize = window.getComputedStyle(el, null).getPropertyValue('font-size')
-        return el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
+        return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
     }
 
     #deserializePageCache(pageCacheKey) {
@@ -723,7 +752,7 @@ class ChronicReader {
 
         fetch(this.url)
             .then(res => res.blob())
-            .then(blob => new ZipWrapper(blob))
+            .then(blob => new ZipWrapper(this.url, blob))
             .then(zip => {
                 if (type == "book") {
                     return new EbookWrapper(zip)

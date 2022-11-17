@@ -1,5 +1,5 @@
 class EbookNode {
-    static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak"]
+    static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak", "!--"]
     static LEAF_ELEMENTS = ["img", "tr", "image"]
 
     constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
@@ -186,6 +186,7 @@ class EbookNode {
     }
     // go through structure and replace href of links with jump to position function calls
     // done after the whole book was scanned
+    // or even better done only when displaying the page
     async updateLinks(filename, ebook, functionName="jumpTo") {
         if (EbookNode.#isLink(this.name)) {
             let parser = new DOMParser()
@@ -204,7 +205,7 @@ class EbookNode {
         } else if (this.children.length > 0) {
             for (var i = 0; i < this.children.length; i++) {
                 var child = this.children[i]
-                child.updateLinks(filename, ebook)
+                await child.updateLinks(filename, ebook)
             }
         }
     }
