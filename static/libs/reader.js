@@ -432,8 +432,9 @@ class EbookDisplay {
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
-        this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#1a1a1a55")
+        this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
         this.tools.style.display = "none"
+        this.tools.style.overflow = "scroll"
         this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
         this.toolsRight.onclick = () => {this.tools.style.display = "block"}
         this.tools.onclick = () => {this.tools.style.display = "none"}
@@ -443,6 +444,23 @@ class EbookDisplay {
     async #buildToolsUI() {
         let toc = await this.ebook.getToc()
         console.log(toc)
+        let toolsContents = document.createElement("div")
+        toolsContents.style.position = "absolute"
+        toolsContents.style.top = 0
+        toolsContents.style.left = "10%"
+        toolsContents.style.width = "80%"
+        let tocElement = document.createElement("ul")
+        for (let i = 0; i < toc.length; i++) {
+            let item = document.createElement("li")
+            let link = document.createElement("a")
+            link.innerHTML = toc[i].name
+            link.onclick = () => this.displayPageFor(toc[i].position)
+            item.appendChild(link)
+            tocElement.appendChild(item)
+        }
+        toolsContents.appendChild(tocElement)
+        this.tools.innerHTML = ""
+        this.tools.appendChild(toolsContents)
     }
 
     async fixLinks(contextFilename) {
