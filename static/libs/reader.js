@@ -6,6 +6,41 @@ function getFileExtension(filename) {
     let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
     return extension
 }
+function num(s, def) {
+    var patt = /[\-]?[0-9\.]+/
+    var match = patt.exec(s)
+    if (match != null && match.length > 0) {
+        var n = match[0]
+        if (n.indexOf('.') > -1) {
+            return parseFloat(n)
+        } else {
+            return parseInt(n)
+        }
+    }
+    return def
+}
+function approx(val1, val2, threshold = 1) {
+    return Math.abs(val1 - val2) < threshold
+}
+function radiansToDegrees(radians) {
+    return radians * (180/Math.PI)
+}
+function computeSwipeParameters(deltaX, deltaY) {
+    let highOnPotenuse = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2))
+    if (highOnPotenuse != 0) {
+        let swipeSine = deltaY / highOnPotenuse
+        let swipeAngle = Math.abs(radiansToDegrees(Math.asin(swipeSine)))
+        return {
+            length: highOnPotenuse,
+            angle: swipeAngle
+        }
+    } else {
+        return {
+            length: 0,
+            angle: 0
+        }
+    }
+}
 function getFileMimeType(filename) {
     let extension = getFileExtension(filename)
     if (extension == "png" || extension == "jpeg"
@@ -124,32 +159,418 @@ class ComicWrapper {
     }
 }
 
+class Gestures {
+    constructor(element, resetSwipeFunction, getZoomFunction, setZoomFunction, panFunction, singleClickFunction, doubleClickFunction, mouseScrollFunction) {
+        this.element = element
+        this.clickCache = []
+        this.DOUBLE_CLICK_THRESHOLD = 400
+        this.CLICK_DISTANCE_THRESHOLD = 5
+        this.resetSwipe = resetSwipeFunction
+        this.getZoom = getZoomFunction
+        this.setZoom = setZoomFunction
+        this.pan = panFunction
+        this.singleClick = singleClickFunction
+        this.doubleClick = doubleClickFunction
+        this.mouseScroll = mouseScrollFunction
+
+        if (this.isTouchEnabled()) {
+            this.element.addEventListener("touchstart", this.getTouchStartHandler(), false)
+            this.element.addEventListener("touchmove", this.getTouchMoveHandler(), false)
+            this.element.addEventListener("touchend", this.getTouchEndHandler(), false)
+        } else {
+            this.element.addEventListener("pointerdown", this.getTouchStartHandler(), false)
+            this.element.addEventListener("pointermove", this.getTouchMoveHandler(), false)
+            this.element.addEventListener("pointerup", this.getTouchEndHandler(), false)
+            this.element.addEventListener("wheel", this.getMouseWheelScrollHandler(), false)
+            this.element.addEventListener("contextmenu", this.getContextMenuHandler(), false)
+        }
+    }
+    getContextMenuHandler() {
+        let self = this
+        function contextMenuHandler(event) {
+            self.disableEventNormalBehavior(event)
+            return false
+        }
+        return contextMenuHandler
+    }
+    getMouseWheelScrollHandler() {
+        let self = this
+        function mouseWheelScrollHandler(event) {
+            let scrollCenterX = event.clientX
+            let scrollCenterY = event.clientY
+            let scrollValue = event.deltaY
+
+            if (self.mouseScroll) self.mouseScroll(scrollCenterX, scrollCenterY, scrollValue)
+        }
+        return mouseWheelScrollHandler
+    }
+    isTouchEnabled() {
+        return window.matchMedia("(pointer: coarse)").matches
+    }
+    disableEventNormalBehavior(event) {
+        event.preventDefault()
+        event.stopPropagation()
+    }
+    pushClick(timestamp) {
+        this.clickCache.push(timestamp)
+        while (this.clickCache.length > 2) {
+            this.clickCache.shift()
+        }
+    }
+    getTouchStartHandler() {
+        let self = this
+        function touchStartHandler(event) {
+            self.disableEventNormalBehavior(event)
+            self.pushClick(Date.now())
+            self.panEnabled = true
+
+            if (self.getTouchesCount(event) >= 1) {
+                self.originalCenter = self.computeCenter(event)
+                self.previousCenter = self.originalCenter
+                if (self.resetSwipe) self.resetSwipe()
+            }
+            if (self.getTouchesCount(event) == 2) {
+                self.originalPinchSize = self.computeDistance(event)
+                if (self.getZoom) self.originalZoom = self.getZoom()
+            }
+            return false
+        }
+        return touchStartHandler
+    }
+    getTouchesCount(event) {
+        if (event.type.startsWith("touch")) {
+            return event.targetTouches.length
+        } else {
+            if (event.buttons > 0) {
+                return 1
+            } else {
+                return 0
+            }
+        }
+    }
+    computeDistance(pinchTouchEvent) {
+        if (pinchTouchEvent.targetTouches.length == 2) {
+            return this.computePointsDistance({
+                x: pinchTouchEvent.targetTouches[0].clientX,
+                y: pinchTouchEvent.targetTouches[0].clientY
+            }, {
+                x: pinchTouchEvent.targetTouches[1].clientX,
+                y: pinchTouchEvent.targetTouches[1].clientY
+            })
+        } else {
+            return null
+        }
+    }
+    computePointsDistance(p1, p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2))
+    }
+    computeCenter(event) {
+        if (event.type.startsWith("touch")) {
+            let centerX = 0
+            let centerY = 0
+            for (let i = 0; i < event.targetTouches.length; i++) {
+                centerX = centerX + event.targetTouches[i].clientX
+                centerY = centerY + event.targetTouches[i].clientY
+            }
+            centerX = centerX / event.targetTouches.length
+            centerY = centerY / event.targetTouches.length
+            return {
+                x: centerX,
+                y: centerY
+            }
+        } else if (event.type.startsWith("pointer")) {
+            return {
+                x: event.clientX,
+                y: event.clientY
+            }
+        } else {
+            return null
+        }
+    }
+    #getPanSpeed() {
+        return 3
+    }
+    getTouchMoveHandler() {
+        let self = this
+        function touchMoveHandler(ev) {
+            self.disableEventNormalBehavior(ev)
+            if (self.getTouchesCount(ev) == 2) {
+                self.pinching = true
+                let pinchSize = self.computeDistance(ev)
+                let currentZoom = pinchSize / self.originalPinchSize
+                let newZoom = self.originalZoom * currentZoom
+                if (self.setZoom) self.setZoom(newZoom, self.originalCenter.x, self.originalCenter.y)
+            } else if (self.getTouchesCount(ev) == 1) {
+                self.pinching = false
+            }
+            if (self.panEnabled && self.getTouchesCount(ev) > 0 && self.getTouchesCount(ev) <= 2) {
+                let currentCenter = self.computeCenter(ev)
+                let deltaX = currentCenter.x - self.previousCenter.x
+                let deltaY = currentCenter.y - self.previousCenter.y
+                let totalDeltaX = currentCenter.x - self.originalCenter.x
+                let totalDeltaY = currentCenter.y - self.originalCenter.y
+                self.previousCenter = currentCenter
+                if (self.pan) {
+                    let stopPan = self.pan(deltaX * self.#getPanSpeed() /*SETTING_COMIC_PAN_SPEED.get()*/, deltaY * self.#getPanSpeed() /*SETTING_COMIC_PAN_SPEED.get()*/, totalDeltaX, totalDeltaY, self.pinching)
+                    if (stopPan) self.panEnabled = false
+                }
+            }
+            return false
+        }
+        return touchMoveHandler
+    }
+    isDoubleClick() {
+        if (this.clickCache.length >= 2) {
+            let timeDifference = this.clickCache[this.clickCache.length - 1] - this.clickCache[this.clickCache.length - 2]
+            return timeDifference < this.DOUBLE_CLICK_THRESHOLD
+        } else {
+            return false
+        }
+    }
+    isLastClickRelevant() {
+        if (this.clickCache.length >= 1) {
+            let clickNotTooOld = Date.now() - this.clickCache[this.clickCache.length - 1] < this.DOUBLE_CLICK_THRESHOLD
+            let panNotTooLarge = this.computePointsDistance(this.originalCenter, this.previousCenter) < this.CLICK_DISTANCE_THRESHOLD
+            return clickNotTooOld && panNotTooLarge && this.panEnabled
+        } else {
+            return false
+        }
+    }
+    getTouchEndHandler() {
+        let self = this
+        function touchEndHandler(ev) {
+            self.disableEventNormalBehavior(ev)
+
+            if (self.getTouchesCount(ev) >= 1) {
+                self.originalCenter = self.computeCenter(ev)
+                self.previousCenter = self.originalCenter
+            }
+            if (self.isLastClickRelevant()) {
+                if (self.isDoubleClick()) {
+                    if (self.doubleClick) self.doubleClick(self.originalCenter.x, self.originalCenter.y)
+                } else {
+                    if (self.singleClick) self.singleClick(self.originalCenter.x, self.originalCenter.y)
+                }
+            }
+            return false
+        }
+        return touchEndHandler
+    }
+}
+
 class ComicDisplay {
     constructor(element, comic, startPosition = 0) {
         this.element = element
         this.comic = comic
+        this.zoomValue = 1
         this.position = startPosition
         this.#buildUI()
-        this.displayPageFor(startPosition)
+        this.displayPageFor(startPosition).then(() => this.#fitPageToScreen())
     }
 
     #buildUI() {
         //this.element.style.position = "fixed"
         this.element.innerHTML = ""
         this.page = document.createElement("img")
+        this.page.style.position = "absolute"
         this.element.appendChild(this.page)
         this.previous = createDivElement(this.element, 0, 0, "10%", "90%", "#ff000055")
-        this.previous.onclick = () => { this.previousPage() }
+        this.previous.onclick = () => { this.#goToPreviousView() }
         this.next = createDivElement(this.element, "90%", 0, "10%", "90%", "#00ff0055")
-        this.next.onclick = () => { this.nextPage() }
+        this.next.onclick = () => { this.#goToNextView() }
         this.toolsLeft = createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff55")
         this.toolsRight = createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff55")
         this.gestureControls = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffff0055")
+
+        let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
+            var zoomDelta = 1 + scrollValue * this.#getScrollSpeed()/*SETTING_COMIC_SCROLL_SPEED.get()*/ * (/*SETTING_COMIC_INVERT_SCROLL.get()*/ this.#getInvertScroll() ? 1 : -1)
+            var newZoom = this.#getZoom() * zoomDelta
+            this.#zoom(newZoom, scrollCenterX, scrollCenterY, true)
+        }
+        let getZoomFunction = function() {
+            return this.#getZoom()
+        }
+        let zoomFunction = function(val, cx, cy, withUpdate) {
+            this.#zoom(val, cx, cy, withUpdate)
+        }
+        let panFunction = (x, y, totalDeltaX, totalDeltaY, pinching) => this.#pan(x, y, totalDeltaX, totalDeltaY, pinching)
+        new Gestures(this.gestureControls, () => this.#resetPan(), getZoomFunction, zoomFunction, panFunction, null, (x, y) => this.#zoomJump(x, y), mouseGestureScroll)
+    }
+
+    #getScrollSpeed() {
+        return 0.001
+    }
+
+    #getInvertScroll() {
+        return false
+    }
+
+    #zoom(zoom, centerX, centerY, withImageUpdate) {
+        let sideLeft = centerX - this.#getLeft()
+        let ratioLeft = sideLeft / (this.#getWidth() * this.#getZoom())
+        let newSideLeft = (this.#getWidth() * zoom) * ratioLeft
+        this.#setLeft(centerX - newSideLeft)
+
+        let sideTop = centerY - this.#getTop()
+        let ratioTop = sideTop / (this.#getHeight() * this.#getZoom())
+        let newSideTop = (this.#getHeight() * zoom) * ratioTop
+        this.#setTop(centerY - newSideTop)
+
+        this.#setZoom(zoom)
+        //SETTING_ZOOM_JUMP.put(zoom)
+        this.#setZoomJump(zoom)
+        if (withImageUpdate) this.#update()
+    }
+
+    #getLastPosition(imageDimension, viewportDimension, imageValue, viewportJumpPercentage, threshold) {
+        return viewportDimension - imageDimension
+    }
+    #getNextPosition(imageDimension, viewportDimension, imageValue, viewportJumpPercentage, threshold) {
+        if (approx(imageValue, viewportDimension - imageDimension, threshold)) return 0
+        var proposedNextPosition = (imageValue - viewportDimension * viewportJumpPercentage) | 0
+        if (proposedNextPosition < viewportDimension - imageDimension) return viewportDimension - imageDimension
+        return proposedNextPosition
+    }
+    #getPreviousPosition(imageDimension, viewportDimension, imageValue, viewportJumpPercentage, threshold) {
+        if (approx(imageValue, 0, threshold)) return viewportDimension - imageDimension
+        var proposedPreviousPosition = (imageValue + viewportDimension * viewportJumpPercentage) | 0
+        if (proposedPreviousPosition > 0) return 0
+        return proposedPreviousPosition
+    }
+    #getHorizontalJump() {
+        return 0.9
+    }
+    #getVerticalJump() {
+        return 0.5
+    }
+    #goToNextView() {
+        if (this.#isEndOfRow()) {
+            if (this.#isEndOfColumn()) {
+                this.nextPage()
+            } else {
+                this.#setLeft(this.#getNextPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
+                this.#setTop(this.#getNextPosition(this.#getHeight(), this.#getViewportHeight(), this.#getTop(), this.#getVerticalJump()/*SETTING_COMIC_VERTICAL_JUMP.get()*/, this.#getColumnThreshold()))
+                this.#update()
+            }
+        } else {
+            this.#setLeft(this.#getNextPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
+            this.#update()
+        }
+    }
+    #goToFirstPosition() {
+        this.#setLeft(0)
+        this.#setTop(0)
+    }
+    #goToLastPosition() {
+        let lastLeft = this.#getLastPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold())
+        let lastTop = this.#getLastPosition(this.#getHeight(), this.#getViewportHeight(), this.#getTop(), this.#getVerticalJump()/*SETTING_COMIC_VERTICAL_JUMP.get()*/, this.#getColumnThreshold())
+        this.#setLeft(lastLeft)
+        this.#setTop(lastTop)
+    }
+    #goToPreviousView() {
+        if (this.#isBeginningOfRow()) {
+            if (this.#isBeginningOfColumn()) {
+                //getComic().goToPreviousPage(true)
+                this.previousPage() // todo: keep zoom correct
+            } else {
+                this.#setLeft(this.#getPreviousPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
+                this.#setTop(this.#getPreviousPosition(this.#getHeight(), this.#getViewportHeight(), this.#getTop(), this.#getVerticalJump()/*SETTING_COMIC_VERTICAL_JUMP.get()*/, this.#getColumnThreshold()))
+                this.#update()
+            }
+        } else {
+            this.#setLeft(this.#getPreviousPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump() /*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
+            this.#update()
+        }
+    }
+    #resetPan() {
+        if (this.#isEndOfRow() && this.#isEndOfColumn()) {
+            this.swipeNextPossible = true
+        } else {
+            this.swipeNextPossible = false
+        }
+        if (this.#isBeginningOfRow() && this.#isBeginningOfColumn()) {
+            this.swipePreviousPossible = true
+        } else {
+            this.swipePreviousPossible = false
+        }
+    }
+
+    #getSwipeLength() {
+        return 0.06
+    }
+
+    #getSwipeAngleThreshold() {
+        return 30
+    }
+
+    /* returns true if pan should be disabled / when moving to a different page */
+    #pan(x, y, totalDeltaX, totalDeltaY, pinching) {
+        if (/*SETTING_SWIPE_PAGE.get() &&*/ (this.swipeNextPossible || this.swipePreviousPossible) && (!pinching)) {
+            let horizontalThreshold = this.#getViewportWidth() * this.#getSwipeLength() /*SETTING_SWIPE_LENGTH.get()*/
+            let swipeParameters = computeSwipeParameters(totalDeltaX, totalDeltaY)
+            let verticalMoveValid = swipeParameters.angle < this.#getSwipeAngleThreshold() /*SETTING_SWIPE_ANGLE_THRESHOLD.get()*/
+            if (this.swipeNextPossible && x > 0 ) this.swipeNextPossible = false
+            if (this.swipePreviousPossible && x < 0 ) this.swipePreviousPossible = false
+            if (verticalMoveValid && totalDeltaX < -horizontalThreshold && this.swipeNextPossible) {
+                this.swipeNextPossible = false
+                this.swipePreviousPossible = false
+                this.#goToNextView()
+                return true
+            } else if (verticalMoveValid && totalDeltaX > horizontalThreshold && this.swipePreviousPossible) {
+                this.swipeNextPossible = false
+                this.swipePreviousPossible = false
+                this.#goToPreviousView()
+                return true
+            } else {
+                this.#addLeft(x)
+                this.#addTop(y)
+                this.#update()
+                return false
+            }
+        } else {
+            this.#addLeft(x)
+            this.#addTop(y)
+            this.#update()
+            return false
+        }
+    }
+
+    #getFitComicToScreen() {
+        if (this.fitComicToScreen == undefined) this.fitComicToScreen = true
+        return this.fitComicToScreen
+    }
+    #setFitComicToScreen(value) {
+        this.fitComicToScreen = value
+    }
+    #getZoomJump() {
+        if (this.zoomJump == undefined) this.zoomJump = 1
+        return this.zoomJump
+    }
+    #setZoomJump(value) {
+        this.zoomJump = value
+    }
+    #zoomJump(x, y) {
+        if (this.#getFitComicToScreen()/*SETTING_FIT_COMIC_TO_SCREEN.get()*/) {
+            this.#setFitComicToScreen(false)/*SETTING_FIT_COMIC_TO_SCREEN.put(false)*/
+            this.#zoom(this.#getZoomJump()/*SETTING_ZOOM_JUMP.get()*/, x, y, true)
+        } else {
+            /*SETTING_FIT_COMIC_TO_SCREEN.put(true)*/
+            this.#setFitComicToScreen(true)
+            this.#fitPageToScreen()
+        }
+    }
+    reset() {
+        this.setWidth(this.getOriginalWidth())
+        this.setHeight(this.getOriginalHeight())
+        this.setLeft(0)
+        this.setTop(0)
+        this.updateMinimumZoom()
     }
 
     async displayPageFor(position) {
         let pageContent = await this.#getPageFor(position)
         this.page.src = pageContent
+        //this.#fitPageToScreen()
     }
 
     async #getPageFor(position) {
@@ -161,15 +582,138 @@ class ComicDisplay {
         let size = await this.comic.getSize()
         if (this.position < size - 1) {
             this.position = this.position + 1
-            this.displayPageFor(this.position)
+            this.displayPageFor(this.position).then(() => {
+                if (this.#getFitComicToScreen()) {
+                    this.#fitPageToScreen()
+                } else {
+                    // got to first position
+                    this.#goToFirstPosition()
+                }
+            })
         }
     }
 
     async previousPage() {
         if (this.position > 0) {
             this.position = this.position - 1
-            this.displayPageFor(this.position)
+            this.displayPageFor(this.position).then(() => {
+                if (this.#getFitComicToScreen()) {
+                    this.#fitPageToScreen()
+                } else {
+                    // got to last position
+                    this.#goToLastPosition()
+                }
+            })
         }
+    }
+
+    #setWidth(width) {
+        this.page.width = width
+    }
+    #getWidth() {
+        return this.page.width
+    }
+    #setHeight(height) {
+        this.page.height = height
+    }
+    #getHeight() {
+        return this.page.height
+    }
+    #getOriginalWidth() {
+        return this.page.naturalWidth
+    }
+    #getOriginalHeight() {
+        return this.page.naturalHeight
+    }
+    #setLeft(left) {
+        this.page.style.left = left + "px"
+    }
+    #getLeft() {
+        return num(this.page.style.left, 0)
+    }
+    #addLeft(x) {
+        this.#setLeft(this.#getLeft() + x)
+    }
+    #setTop(top) {
+        this.page.style.top = top + "px"
+    }
+    #getTop() {
+        return num(this.page.style.top, 0)
+    }
+    #addTop(y) {
+        this.#setTop(this.#getTop() + y)
+    }
+    #setZoom(zoom) {
+        this.zoomValue = zoom
+    }
+    #getZoom() {
+        return this.zoomValue
+    }
+    #getViewportHeight() {
+        return this.element.offsetHeight
+    }
+    #getViewportWidth() {
+        return this.element.offsetWidth
+    }
+    /*#updateMinimumZoom() {
+        this.minimumZoom = Math.min(this.#getViewportHeight() / this.#getOriginalHeight(), this.#getViewportWidth() / this.#getOriginalWidth())
+    }*/
+    #getMinimumZoom() {
+        //return this.minimumZoom
+        return Math.min(this.#getViewportHeight() / this.#getOriginalHeight(), this.#getViewportWidth() / this.#getOriginalWidth())
+    }
+    #getZoomForFitToScreen() {
+        let zfts = Math.min(this.#getViewportHeight() / this.#getOriginalHeight(), this.#getViewportWidth() / this.#getOriginalWidth())
+        console.log(this.#getViewportHeight())
+        console.log(zfts)
+        return zfts
+    }
+    #fitPageToScreen() {
+        this.#setZoom(this.#getZoomForFitToScreen())
+        this.#update()
+    }
+    #getRowThreshold() {
+        return this.#getWidth() * 0.02/*SETTING_COMIC_ROW_THRESHOLD.get()*/
+    }
+    #getColumnThreshold() {
+        return this.#getHeight() * 0.05 /*SETTING_COMIC_COLUMN_THRESHOLD.get()*/
+    }
+    #isEndOfRow() {
+        return (this.#getWidth() <= this.#getViewportWidth()) || approx(this.#getLeft() + this.#getWidth(), this.#getViewportWidth(), this.#getRowThreshold())
+    }
+    #isBeginningOfRow() {
+        return (this.#getWidth() <= this.#getViewportWidth()) || approx(this.#getLeft(), 0, this.#getRowThreshold())
+    }
+    #isEndOfColumn() {
+        return (this.#getHeight() <= this.#getViewportHeight()) || approx(this.#getTop() + this.#getHeight(), this.#getViewportHeight(), this.#getColumnThreshold())
+    }
+    #isBeginningOfColumn() {
+        return (this.#getHeight() <= this.#getViewportHeight()) || approx(this.#getTop(), 0, this.#getColumnThreshold())
+    }
+    #update() {
+        let minimumZoom = this.#getMinimumZoom()
+        console.log(minimumZoom)
+        if (this.#getZoom() < minimumZoom) {
+            this.#setZoom(minimumZoom)
+            //this.#setFitComicToScreen(true)
+        } else {
+            //this.#setFitComicToScreen(false)
+        }
+
+        let newWidth = this.#getOriginalWidth() * this.#getZoom()
+        let newHeight = this.#getOriginalHeight() * this.#getZoom()
+        this.#setWidth(newWidth)
+        this.#setHeight(newHeight)
+
+        let minimumLeft = (newWidth < this.#getViewportWidth()) ? (this.#getViewportWidth() / 2) - (newWidth / 2) : Math.min(0, this.#getViewportWidth() - newWidth)
+        let maximumLeft = (newWidth < this.#getViewportWidth()) ? (this.#getViewportWidth() / 2) - (newWidth / 2) : Math.max(0, this.#getViewportWidth() - newWidth)
+        let minimumTop = (newHeight < this.#getViewportHeight()) ? (this.#getViewportHeight() / 2) - (newHeight / 2) : Math.min(0, this.#getViewportHeight() - newHeight)
+        let maximumTop = (newHeight < this.#getViewportHeight()) ? (this.#getViewportHeight() / 2) - (newHeight / 2) : Math.max(0, this.#getViewportHeight() - newHeight)
+
+        if (this.#getLeft() < minimumLeft) this.#setLeft(minimumLeft)
+        if (this.#getLeft() > maximumLeft) this.#setLeft(maximumLeft)
+        if (this.#getTop() < minimumTop) this.#setTop(minimumTop)
+        if (this.#getTop() > maximumTop) this.#setTop(maximumTop)
     }
 }
 
