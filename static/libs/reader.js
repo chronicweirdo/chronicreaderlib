@@ -308,7 +308,9 @@ class Gestures {
                 let pinchSize = self.computeDistance(ev)
                 let currentZoom = pinchSize / self.originalPinchSize
                 let newZoom = self.originalZoom * currentZoom
-                if (self.setZoom) self.setZoom(newZoom, self.originalCenter.x, self.originalCenter.y)
+                if (self.setZoom) {
+                    self.setZoom(newZoom, self.originalCenter.x, self.originalCenter.y)
+                }
             } else if (self.getTouchesCount(ev) == 1) {
                 self.pinching = false
             }
@@ -320,7 +322,13 @@ class Gestures {
                 let totalDeltaY = currentCenter.y - self.originalCenter.y
                 self.previousCenter = currentCenter
                 if (self.pan) {
-                    let stopPan = self.pan(deltaX * self.#getPanSpeed() /*SETTING_COMIC_PAN_SPEED.get()*/, deltaY * self.#getPanSpeed() /*SETTING_COMIC_PAN_SPEED.get()*/, totalDeltaX, totalDeltaY, self.pinching)
+                    let stopPan = self.pan(
+                        deltaX * self.#getPanSpeed(), 
+                        deltaY * self.#getPanSpeed(), 
+                        totalDeltaX, 
+                        totalDeltaY, 
+                        self.pinching
+                    )
                     if (stopPan) self.panEnabled = false
                 }
             }
@@ -392,18 +400,29 @@ class ComicDisplay {
         this.gestureControls = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffff0055")
 
         let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
-            var zoomDelta = 1 + scrollValue * this.#getScrollSpeed()/*SETTING_COMIC_SCROLL_SPEED.get()*/ * (/*SETTING_COMIC_INVERT_SCROLL.get()*/ this.#getInvertScroll() ? 1 : -1)
+            var zoomDelta = 1 + scrollValue * this.#getScrollSpeed() * (this.#getInvertScroll() ? 1 : -1)
             var newZoom = this.#getZoom() * zoomDelta
             this.#zoom(newZoom, scrollCenterX, scrollCenterY, true)
         }
-        let getZoomFunction = function() {
+        let getZoomFunction = () => {
             return this.#getZoom()
         }
-        let zoomFunction = function(val, cx, cy, withUpdate) {
+        let zoomFunction = (val, cx, cy, withUpdate) => {
             this.#zoom(val, cx, cy, withUpdate)
         }
-        let panFunction = (x, y, totalDeltaX, totalDeltaY, pinching) => this.#pan(x, y, totalDeltaX, totalDeltaY, pinching)
-        new Gestures(this.gestureControls, () => this.#resetPan(), getZoomFunction, zoomFunction, panFunction, null, (x, y) => this.#zoomJump(x, y), mouseGestureScroll)
+        let panFunction = (x, y, totalDeltaX, totalDeltaY, pinching) => {
+            this.#pan(x, y, totalDeltaX, totalDeltaY, pinching)
+        }
+        new Gestures(
+            this.gestureControls, 
+            () => this.#resetPan(), 
+            getZoomFunction, 
+            zoomFunction, 
+            panFunction, 
+            null, 
+            (x, y) => this.#zoomJump(x, y), 
+            mouseGestureScroll
+        )
     }
 
     #getScrollSpeed() {
@@ -426,7 +445,6 @@ class ComicDisplay {
         this.#setTop(centerY - newSideTop)
 
         this.#setZoom(zoom)
-        //SETTING_ZOOM_JUMP.put(zoom)
         this.#setZoomJump(zoom)
         if (withImageUpdate) this.#update()
     }
@@ -457,12 +475,30 @@ class ComicDisplay {
             if (this.#isEndOfColumn()) {
                 this.nextPage()
             } else {
-                this.#setLeft(this.#getNextPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
-                this.#setTop(this.#getNextPosition(this.#getHeight(), this.#getViewportHeight(), this.#getTop(), this.#getVerticalJump()/*SETTING_COMIC_VERTICAL_JUMP.get()*/, this.#getColumnThreshold()))
+                this.#setLeft(this.#getNextPosition(
+                    this.#getWidth(), 
+                    this.#getViewportWidth(), 
+                    this.#getLeft(), 
+                    this.#getHorizontalJump(), 
+                    this.#getRowThreshold())
+                )
+                this.#setTop(this.#getNextPosition(
+                    this.#getHeight(), 
+                    this.#getViewportHeight(), 
+                    this.#getTop(), 
+                    this.#getVerticalJump(), 
+                    this.#getColumnThreshold())
+                )
                 this.#update()
             }
         } else {
-            this.#setLeft(this.#getNextPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
+            this.#setLeft(this.#getNextPosition(
+                this.#getWidth(), 
+                this.#getViewportWidth(), 
+                this.#getLeft(), 
+                this.#getHorizontalJump(), 
+                this.#getRowThreshold())
+            )
             this.#update()
         }
     }
@@ -471,23 +507,52 @@ class ComicDisplay {
         this.#setTop(0)
     }
     #goToLastPosition() {
-        let lastLeft = this.#getLastPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold())
-        let lastTop = this.#getLastPosition(this.#getHeight(), this.#getViewportHeight(), this.#getTop(), this.#getVerticalJump()/*SETTING_COMIC_VERTICAL_JUMP.get()*/, this.#getColumnThreshold())
+        let lastLeft = this.#getLastPosition(
+            this.#getWidth(), 
+            this.#getViewportWidth(), 
+            this.#getLeft(), 
+            this.#getHorizontalJump(), 
+            this.#getRowThreshold()
+        )
+        let lastTop = this.#getLastPosition(
+            this.#getHeight(), 
+            this.#getViewportHeight(), 
+            this.#getTop(), 
+            this.#getVerticalJump(), 
+            this.#getColumnThreshold()
+        )
         this.#setLeft(lastLeft)
         this.#setTop(lastTop)
     }
     #goToPreviousView() {
         if (this.#isBeginningOfRow()) {
             if (this.#isBeginningOfColumn()) {
-                //getComic().goToPreviousPage(true)
-                this.previousPage() // todo: keep zoom correct
+                this.previousPage()
             } else {
-                this.#setLeft(this.#getPreviousPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump()/*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
-                this.#setTop(this.#getPreviousPosition(this.#getHeight(), this.#getViewportHeight(), this.#getTop(), this.#getVerticalJump()/*SETTING_COMIC_VERTICAL_JUMP.get()*/, this.#getColumnThreshold()))
+                this.#setLeft(this.#getPreviousPosition(
+                    this.#getWidth(), 
+                    this.#getViewportWidth(), 
+                    this.#getLeft(), 
+                    this.#getHorizontalJump(), 
+                    this.#getRowThreshold())
+                )
+                this.#setTop(this.#getPreviousPosition(
+                    this.#getHeight(), 
+                    this.#getViewportHeight(), 
+                    this.#getTop(), 
+                    this.#getVerticalJump(), 
+                    this.#getColumnThreshold())
+                )
                 this.#update()
             }
         } else {
-            this.#setLeft(this.#getPreviousPosition(this.#getWidth(), this.#getViewportWidth(), this.#getLeft(), this.#getHorizontalJump() /*SETTING_COMIC_HORIZONTAL_JUMP.get()*/, this.#getRowThreshold()))
+            this.#setLeft(this.#getPreviousPosition(
+                this.#getWidth(), 
+                this.#getViewportWidth(), 
+                this.#getLeft(), 
+                this.#getHorizontalJump(), 
+                this.#getRowThreshold())
+            )
             this.#update()
         }
     }
@@ -512,12 +577,16 @@ class ComicDisplay {
         return 30
     }
 
+    #getSwipeEnabled() {
+        return true
+    }
+
     /* returns true if pan should be disabled / when moving to a different page */
     #pan(x, y, totalDeltaX, totalDeltaY, pinching) {
-        if (/*SETTING_SWIPE_PAGE.get() &&*/ (this.swipeNextPossible || this.swipePreviousPossible) && (!pinching)) {
-            let horizontalThreshold = this.#getViewportWidth() * this.#getSwipeLength() /*SETTING_SWIPE_LENGTH.get()*/
+        if (this.#getSwipeEnabled && (this.swipeNextPossible || this.swipePreviousPossible) && (!pinching)) {
+            let horizontalThreshold = this.#getViewportWidth() * this.#getSwipeLength()
             let swipeParameters = computeSwipeParameters(totalDeltaX, totalDeltaY)
-            let verticalMoveValid = swipeParameters.angle < this.#getSwipeAngleThreshold() /*SETTING_SWIPE_ANGLE_THRESHOLD.get()*/
+            let verticalMoveValid = swipeParameters.angle < this.#getSwipeAngleThreshold()
             if (this.swipeNextPossible && x > 0 ) this.swipeNextPossible = false
             if (this.swipePreviousPossible && x < 0 ) this.swipePreviousPossible = false
             if (verticalMoveValid && totalDeltaX < -horizontalThreshold && this.swipeNextPossible) {
@@ -559,11 +628,10 @@ class ComicDisplay {
         this.zoomJump = value
     }
     #zoomJump(x, y) {
-        if (this.#getFitComicToScreen()/*SETTING_FIT_COMIC_TO_SCREEN.get()*/) {
-            this.#setFitComicToScreen(false)/*SETTING_FIT_COMIC_TO_SCREEN.put(false)*/
-            this.#zoom(this.#getZoomJump()/*SETTING_ZOOM_JUMP.get()*/, x, y, true)
+        if (this.#getFitComicToScreen()) {
+            this.#setFitComicToScreen(false)
+            this.#zoom(this.#getZoomJump(), x, y, true)
         } else {
-            /*SETTING_FIT_COMIC_TO_SCREEN.put(true)*/
             this.#setFitComicToScreen(true)
             this.#fitPageToScreen()
         }
@@ -595,7 +663,6 @@ class ComicDisplay {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
-                    // got to first position
                     this.#goToFirstPosition()
                 }
             })
@@ -609,7 +676,6 @@ class ComicDisplay {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
-                    // got to last position
                     this.#goToLastPosition()
                 }
             })
@@ -632,9 +698,7 @@ class ComicDisplay {
         return this.page.naturalWidth
     }
     #getOriginalHeight() {
-        let oh = this.page.naturalHeight
-        console.log("original height: " + oh)
-        return oh
+        return this.page.naturalHeight
     }
     #setLeft(left) {
         this.page.style.left = left + "px"
@@ -666,49 +730,48 @@ class ComicDisplay {
     #getViewportWidth() {
         return this.element.offsetWidth
     }
-    /*#updateMinimumZoom() {
-        this.minimumZoom = Math.min(this.#getViewportHeight() / this.#getOriginalHeight(), this.#getViewportWidth() / this.#getOriginalWidth())
-    }*/
     #getMinimumZoom() {
-        //return this.minimumZoom
-        return Math.min(this.#getViewportHeight() / this.#getOriginalHeight(), this.#getViewportWidth() / this.#getOriginalWidth())
+        return Math.min(
+            this.#getViewportHeight() / this.#getOriginalHeight(), 
+            this.#getViewportWidth() / this.#getOriginalWidth()
+        )
     }
     #getZoomForFitToScreen() {
-        let zfts = Math.min(this.#getViewportHeight() / this.#getOriginalHeight(), this.#getViewportWidth() / this.#getOriginalWidth())
-        console.log(this.#getViewportHeight())
-        console.log(zfts)
-        return zfts
+        return Math.min(
+            this.#getViewportHeight() / this.#getOriginalHeight(), 
+            this.#getViewportWidth() / this.#getOriginalWidth()
+        )
     }
     #fitPageToScreen() {
         this.#setZoom(this.#getZoomForFitToScreen())
         this.#update()
     }
     #getRowThreshold() {
-        return this.#getWidth() * 0.02/*SETTING_COMIC_ROW_THRESHOLD.get()*/
+        return this.#getWidth() * 0.02
     }
     #getColumnThreshold() {
-        return this.#getHeight() * 0.05 /*SETTING_COMIC_COLUMN_THRESHOLD.get()*/
+        return this.#getHeight() * 0.05
     }
     #isEndOfRow() {
-        return (this.#getWidth() <= this.#getViewportWidth()) || approx(this.#getLeft() + this.#getWidth(), this.#getViewportWidth(), this.#getRowThreshold())
+        return (this.#getWidth() <= this.#getViewportWidth()) 
+            || approx(this.#getLeft() + this.#getWidth(), this.#getViewportWidth(), this.#getRowThreshold())
     }
     #isBeginningOfRow() {
-        return (this.#getWidth() <= this.#getViewportWidth()) || approx(this.#getLeft(), 0, this.#getRowThreshold())
+        return (this.#getWidth() <= this.#getViewportWidth()) 
+            || approx(this.#getLeft(), 0, this.#getRowThreshold())
     }
     #isEndOfColumn() {
-        return (this.#getHeight() <= this.#getViewportHeight()) || approx(this.#getTop() + this.#getHeight(), this.#getViewportHeight(), this.#getColumnThreshold())
+        return (this.#getHeight() <= this.#getViewportHeight()) 
+            || approx(this.#getTop() + this.#getHeight(), this.#getViewportHeight(), this.#getColumnThreshold())
     }
     #isBeginningOfColumn() {
-        return (this.#getHeight() <= this.#getViewportHeight()) || approx(this.#getTop(), 0, this.#getColumnThreshold())
+        return (this.#getHeight() <= this.#getViewportHeight()) 
+            || approx(this.#getTop(), 0, this.#getColumnThreshold())
     }
     #update() {
         let minimumZoom = this.#getMinimumZoom()
-        console.log(minimumZoom)
         if (this.#getZoom() < minimumZoom) {
             this.#setZoom(minimumZoom)
-            //this.#setFitComicToScreen(true)
-        } else {
-            //this.#setFitComicToScreen(false)
         }
 
         let newWidth = this.#getOriginalWidth() * this.#getZoom()
@@ -716,10 +779,18 @@ class ComicDisplay {
         this.#setWidth(newWidth)
         this.#setHeight(newHeight)
 
-        let minimumLeft = (newWidth < this.#getViewportWidth()) ? (this.#getViewportWidth() / 2) - (newWidth / 2) : Math.min(0, this.#getViewportWidth() - newWidth)
-        let maximumLeft = (newWidth < this.#getViewportWidth()) ? (this.#getViewportWidth() / 2) - (newWidth / 2) : Math.max(0, this.#getViewportWidth() - newWidth)
-        let minimumTop = (newHeight < this.#getViewportHeight()) ? (this.#getViewportHeight() / 2) - (newHeight / 2) : Math.min(0, this.#getViewportHeight() - newHeight)
-        let maximumTop = (newHeight < this.#getViewportHeight()) ? (this.#getViewportHeight() / 2) - (newHeight / 2) : Math.max(0, this.#getViewportHeight() - newHeight)
+        let minimumLeft = (newWidth < this.#getViewportWidth()) 
+            ? (this.#getViewportWidth() / 2) - (newWidth / 2) 
+            : Math.min(0, this.#getViewportWidth() - newWidth)
+        let maximumLeft = (newWidth < this.#getViewportWidth()) 
+            ? (this.#getViewportWidth() / 2) - (newWidth / 2) 
+            : Math.max(0, this.#getViewportWidth() - newWidth)
+        let minimumTop = (newHeight < this.#getViewportHeight()) 
+            ? (this.#getViewportHeight() / 2) - (newHeight / 2) 
+            : Math.min(0, this.#getViewportHeight() - newHeight)
+        let maximumTop = (newHeight < this.#getViewportHeight()) 
+            ? (this.#getViewportHeight() / 2) - (newHeight / 2) 
+            : Math.max(0, this.#getViewportHeight() - newHeight)
 
         if (this.#getLeft() < minimumLeft) this.#setLeft(minimumLeft)
         if (this.#getLeft() > maximumLeft) this.#setLeft(maximumLeft)
@@ -938,8 +1009,7 @@ class EbookDisplay {
         this.element = element
         this.ebook = ebook
         this.#buildUI()
-        this.displayPageFor(startPosition).then(value => {
-            //this.ebook.getToc().then(console.log)
+        this.displayPageFor(startPosition).then(() => {
             this.triggerComputationForAllPages()
         })
     }
@@ -998,7 +1068,6 @@ class EbookDisplay {
 
     async #buildToolsUI() {
         let toc = await this.ebook.getToc()
-        console.log(toc)
         let toolsContents = document.createElement("div")
         toolsContents.style.position = "absolute"
         toolsContents.style.top = 0
