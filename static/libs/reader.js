@@ -2,6 +2,15 @@
 
 var chronicReaderInstance = null
 
+function imageLoadedPromise(image) {
+    return new Promise((resolve, reject) => {
+        let imageResolveFunction = function() {
+            resolve()
+        }
+        image.onload = imageResolveFunction
+        image.onerror = imageResolveFunction
+    })
+}
 function getFileExtension(filename) {
     let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
     return extension
@@ -570,7 +579,7 @@ class ComicDisplay {
     async displayPageFor(position) {
         let pageContent = await this.#getPageFor(position)
         this.page.src = pageContent
-        //this.#fitPageToScreen()
+        await imageLoadedPromise(this.page)
     }
 
     async #getPageFor(position) {
@@ -623,7 +632,9 @@ class ComicDisplay {
         return this.page.naturalWidth
     }
     #getOriginalHeight() {
-        return this.page.naturalHeight
+        let oh = this.page.naturalHeight
+        console.log("original height: " + oh)
+        return oh
     }
     #setLeft(left) {
         this.page.style.left = left + "px"
