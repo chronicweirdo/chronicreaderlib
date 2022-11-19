@@ -2,6 +2,11 @@
 
 var chronicReaderInstance = null
 
+function getLoadingElement() {
+    let loading = document.createElement('div')
+    loading.innerHTML = "Loading..."
+    return loading
+}
 function imageLoadedPromise(image) {
     return new Promise((resolve, reject) => {
         let imageResolveFunction = function() {
@@ -423,6 +428,17 @@ class ComicDisplay {
             (x, y) => this.#zoomJump(x, y), 
             mouseGestureScroll
         )
+        this.loading = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffffff")
+        this.loading.innerHTML = "Loading..."
+        this.loading.style.display = "none"
+    }
+
+    #showLoading() {
+        this.loading.style.display = "block"
+    }
+
+    #hideLoading() {
+        this.loading.style.display = "none"
     }
 
     #getScrollSpeed() {
@@ -645,9 +661,11 @@ class ComicDisplay {
     }
 
     async displayPageFor(position) {
+        this.#showLoading()
         let pageContent = await this.#getPageFor(position)
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
+        this.#hideLoading()
     }
 
     async #getPageFor(position) {
@@ -1064,6 +1082,17 @@ class EbookDisplay {
         this.toolsRight.onclick = () => {this.tools.style.display = "block"}
         this.tools.onclick = () => {this.tools.style.display = "none"}
         this.#buildToolsUI()
+        this.loading = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.loading.innerHTML = "Loading..."
+        this.loading.style.display = "none"
+    }
+
+    #showLoading() {
+        this.loading.style.display = "block"
+    }
+
+    #hideLoading() {
+        this.loading.style.display = "none"
     }
 
     async #buildToolsUI() {
@@ -1103,14 +1132,17 @@ class EbookDisplay {
     }
 
     async displayPageFor(position) {
+        this.#showLoading() // todo: show loading delayed, so it's not triggerred when no computation time
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
             this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
+            this.#hideLoading()
             let node = await this.ebook.getNodeAt(page.start)
             this.fixLinks(node.key)
             await this.#timeout(10)
         }
+        
         return page
     }
 
