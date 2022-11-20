@@ -48,9 +48,11 @@ var staticServe = function(req, res) {
             res.write('404: File Not Found!')
             return res.end()
         }
-        
+        var stats = fs.statSync(fileLoc)
+        console.log(stats)
         res.statusCode = 200
         res.setHeader("Content-Type", getFileMimeType(fileLoc))
+        res.setHeader("Content-Length", stats["size"])
         res.write(data)
         return res.end()
     })

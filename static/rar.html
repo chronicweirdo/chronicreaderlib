@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="/libs/jszip.js"></script>
+    <!-- https://github.com/43081j/rar.js -->
+    <script src="/libs/rar.js"></script>
+    <script src="/libs/reader.js"></script>
+    <script>
+        var url = "/books/RangerHouse.cbr";
+        function getString(view, length, offset, raw) {
+            offset = offset || 0;
+            length = length || (view.byteLength - offset);
+            if (length < 0) {
+                length += view.byteLength;
+            }
+            let str = '';
+            if (typeof Buffer !== 'undefined') {
+                const data = [];
+                for (let i = offset; i < (offset + length); i++) {
+                    data.push(view.getUint8(i));
+                }
+                return (new Buffer(data)).toString();
+            }
+            else {
+                for (let i = offset; i < (offset + length); i++) {
+                    str += String.fromCharCode(view.getUint8(i));
+                }
+                if (raw) {
+                    return str;
+                }
+                // TODO: why does this work?
+                return decodeURIComponent(window.escape(str));
+            }
+        }
+        window.onload = function() {
+            fetch(url)
+                .then(res => res.blob())
+                .then(blob => {
+                    console.log(blob)
+                    return blob.arrayBuffer()
+                })
+                .then(ab => {
+                    console.log(ab)
+
+                    var header = ab.slice(0, 14)
+                    const headerView = new DataView(header);
+                    if (getString(headerView, 7, 0, true) !== '\x52\x61\x72\x21\x1a\x07\x00') {
+                        console.log('Invalid RAR archive');
+                    } else {
+                        console.log('valid rar archive')
+                    }
+                    const headerType = headerView.getUint8(9);
+                    console.log("header type: " + headerType.toString(2))
+                    const headerFlags = headerView.getUint16(10, true);
+                    console.log("header flags: " + headerFlags.toString(2))
+                    const headerSize = headerView.getUint16(12, true);
+                    console.log("header size: " + headerSize.toString(2))
+                })
+        }
+    </script>
+</head>
+<body>
+    Rar test
+</body>
+</html>

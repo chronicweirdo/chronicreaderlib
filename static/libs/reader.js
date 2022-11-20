@@ -662,6 +662,49 @@ class ZipWrapper {
     }
 }
 
+class RarWrapper {
+    constructor(url, bytes) {
+        this.url = url
+        this.data = bytes
+    }
+    getUrl() {
+        return this.url
+    }
+    async #getRar() {
+        if (this.rar == undefined) {
+            var rar = await Rar.fromBlob(this.data)
+            console.log(rar)
+            this.rar = rar
+        }
+        return this.rar
+    }
+    async getFiles() {
+        let rar = await this.#getRar()
+        console.log(rar.entries)
+        /*let files = Object.entries(zip.files)
+            .filter(v => v[1].dir == false)
+            .map(v => v[0])
+        return files*/
+        return null
+    }
+    // https://stuk.github.io/jszip/documentation/api_zipobject/async.html
+    async #getFileContents(filename, filekind) {
+        let rar = await this.#getRar()
+        /*let entry = zip.files[filename]
+        let contents = await entry.async(filekind)
+        return contents*/
+        return null
+    }
+    async getBase64FileContents(filename) {
+        //return this.#getFileContents(filename, "base64")
+        return null
+    }
+    async getTextFileContents(filename) {
+        //return this.#getFileContents(filename, "text")
+        return null
+    }
+}
+
 /*
 comic wrapper
 - contains a zip or a rar wrapper
@@ -673,6 +716,7 @@ comic wrapper
 
 class ComicWrapper {
     constructor(archive) {
+        console.log(archive)
         this.archive = archive
     }
 
@@ -1363,6 +1407,7 @@ ebook wrapper
 
 class EbookWrapper {
     constructor(archive) {
+        console.log(archive)
         this.archive = archive
     }
 
@@ -1872,20 +1917,33 @@ class ChronicReader {
     #init() {
         let extension = getFileExtension(this.url)
         let type = ""
+        let archiveType = ""
         if (extension == "epub") {
             type = "book"
-        } else if (extension == "cbr" || extension == "cbz") {
+            archiveType = "zip"
+        } else if (extension == "cbz") {
             type = "comic"
+            archiveType = "zip"
+        } else if (extension == "cbr") {
+            type = "comic"
+            archiveType = "rar"
         }
 
         fetch(this.url)
             .then(res => res.blob())
-            .then(blob => new ZipWrapper(this.url, blob))
-            .then(zip => {
+            .then(blob => {
+                if (archiveType == "zip") {
+                    return new ZipWrapper(this.url, blob)
+                } else if (archiveType == "rar") {
+                    return new RarWrapper(this.url, blob)
+                } else {
+                    return null
+                }
+            }).then(archive => {
                 if (type == "book") {
-                    return new EbookWrapper(zip)
+                    return new EbookWrapper(archive)
                 } else if (type == "comic") {
-                    return new ComicWrapper(zip)
+                    return new ComicWrapper(archive)
                 } else {
                     return null
                 }
