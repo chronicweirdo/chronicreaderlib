@@ -35,12 +35,9 @@ function getFileMimeType(filename) {
 
 var staticServe = function(req, res) {
     var resolvedBase = path.resolve(staticBasePath)
-    console.log("resolvedBase=" + resolvedBase)
     var safeSuffix = path.normalize(req.url).replace(/^(\.\.[\/\\])+/, '')
     if (safeSuffix == "/") safeSuffix = "/index.html"
-    console.log("safeSuffix=" + safeSuffix)
     var fileLoc = path.join(resolvedBase, safeSuffix)
-    console.log("fileLoc=" + fileLoc)
 
     fs.readFile(fileLoc, function(err, data) {
         if (err) {
@@ -49,7 +46,6 @@ var staticServe = function(req, res) {
             return res.end()
         }
         var stats = fs.statSync(fileLoc)
-        console.log(stats)
         res.statusCode = 200
         res.setHeader("Content-Type", getFileMimeType(fileLoc))
         res.setHeader("Content-Length", stats["size"])
