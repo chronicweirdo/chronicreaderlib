@@ -1869,6 +1869,14 @@ class ChronicReader {
         chronicReaderInstance = this
     }
 
+    #getInitialPosition() {
+        if (this.settings.position) {
+            return this.settings.position
+        } else {
+            return 0
+        }
+    }
+
     #init() {
         let extension = getFileExtension(this.url)
         let type = ""
@@ -1900,9 +1908,9 @@ class ChronicReader {
             }).then(wrapper => {
                 if (wrapper) {
                     if (type == "book") {
-                        this.display = new EbookDisplay(this.element, wrapper, 3500)
+                        this.display = new EbookDisplay(this.element, wrapper, this.#getInitialPosition())
                     } else if (type == "comic") {
-                        this.display = new ComicDisplay(this.element, wrapper, 0)
+                        this.display = new ComicDisplay(this.element, wrapper, this.#getInitialPosition())
                     }
                 }
             })

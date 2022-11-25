@@ -7,12 +7,17 @@
     <script src="/libs/reader.js"></script>
     <script>
         var urls = ["/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub", "/books/Feature_Comics_111.cbz"];
+        var positions = [0, 10]
         var index = 0;
         var book;
         var bookDisplay;
         function displayBook() {
             console.log(urls[index])
-            let reader = new ChronicReader(urls[index], document.getElementById("page"))
+            let reader = new ChronicReader(
+                urls[index], 
+                document.getElementById("page"),
+                { "position": positions[index]}
+            )
         }
         function displayNextBook() {
             index = index + 1
