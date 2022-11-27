@@ -1604,6 +1604,11 @@ class EbookDisplay {
         this.toolsLeft = createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff")
         this.toolsRight = createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff")
         this.page = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+
+        //const [sheet] = window.document.styleSheets;
+        //sheet.insertRule('h1, h2, h3, h4, h5, h6 { color: red; }', sheet.cssRules.length)
+        
+
         this.shadowPage = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
