@@ -2,6 +2,20 @@
 
 var chronicReaderInstance = null
 
+var delayExecutionTriggerTimestamp = null
+function executeWithDelay(func, ms) {
+    let now = Date.now()
+    delayExecutionTriggerTimestamp = now
+    let getExecuteWithDelayFunction = function(triggerTimestamp) {
+        return () => {
+            if (triggerTimestamp == delayExecutionTriggerTimestamp) {
+                //console.log("execute with delay for " + triggerTimestamp + " " + delayExecutionTriggerTimestamp)
+                func()
+            }
+        }
+    }
+    window.setTimeout(getExecuteWithDelayFunction(now), ms)
+}
 function getLoadingElement() {
     let loading = document.createElement('div')
     loading.innerHTML = "Loading..."
@@ -970,6 +984,10 @@ class ComicDisplay {
         this.loading = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffffff")
         this.loading.innerHTML = "Loading..."
         this.loading.style.display = "none"
+
+        window.onresize = () => {
+            executeWithDelay(() => { this.#update() }, 500)
+        }
     }
 
     #showLoading() {
@@ -1632,6 +1650,10 @@ class EbookDisplay {
         this.loading = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
         this.loading.innerHTML = "Loading..."
         this.loading.style.display = "none"
+
+        window.onresize = () => {
+            executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
+        }
     }
 
     #showLoading() {
