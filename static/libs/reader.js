@@ -24,8 +24,6 @@ function getLoadingElement() {
 function imageLoadedPromise(image) {
     return new Promise((resolve, reject) => {
         let imageResolveFunction = function() {
-            console.log("image is loaded")
-            console.log(image.naturalWidth)
             resolve()
         }
         image.onload = imageResolveFunction
@@ -1583,6 +1581,9 @@ class EbookDisplay {
     constructor(element, ebook, startPosition = 0) {
         this.element = element
         this.ebook = ebook
+        this.textSize = 1
+        this.maximumTextSize = 2
+        this.minimumTextSize = 0.5
         this.#buildUI()
         this.displayPageFor(startPosition).then(() => {
             this.triggerComputationForAllPages()
@@ -1616,7 +1617,30 @@ class EbookDisplay {
             )
     }
 
-    
+    #setTextSize(value) {
+        this.textSize = value
+        this.page.style.fontSize = this.textSize + "em"
+        this.shadowPage.style.fontSize = this.textSize + "em"
+        this.displayPageFor(this.currentPage.start)
+    }
+
+    #increaseTextSize() {
+        let currentTextSize = this.textSize
+        let newTextSize = currentTextSize + 0.1
+        if (newTextSize > this.maximumTextSize) {
+            newTextSize = this.maximumTextSize
+        }
+        this.#setTextSize(newTextSize)
+    }
+
+    #decreaseTextSize() {
+        let currentTextSize = this.textSize
+        let newTextSize = currentTextSize - 0.1
+        if (newTextSize < this.minimumTextSize) {
+            newTextSize = this.minimumTextSize
+        }
+        this.#setTextSize(newTextSize)
+    }
 
     #buildUI() {
         const leftMarginPercent = 10
@@ -1632,11 +1656,13 @@ class EbookDisplay {
         this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff")
         this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff")
         this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
+        this.page.style.fontSize = this.textSize + "em"
 
         //const [sheet] = window.document.styleSheets;
         //sheet.insertRule('h1, h2, h3, h4, h5, h6 { color: red; }', sheet.cssRules.length)
         
         this.shadowPage = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
+        this.shadowPage.style.fontSize = this.textSize + "em"
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
@@ -1681,6 +1707,14 @@ class EbookDisplay {
             tocElement.appendChild(item)
         }
         toolsContents.appendChild(tocElement)
+        let decreaseTextSizeButton = document.createElement("a")
+        decreaseTextSizeButton.innerHTML = "decrease text size"
+        decreaseTextSizeButton.onclick = () => this.#decreaseTextSize()
+        toolsContents.appendChild(decreaseTextSizeButton)
+        let increaseTextSizeButton = document.createElement("a")
+        increaseTextSizeButton.innerHTML = "increase text size"
+        increaseTextSizeButton.onclick = () => this.#increaseTextSize()
+        toolsContents.appendChild(increaseTextSizeButton)
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)
     }
@@ -1738,7 +1772,7 @@ class EbookDisplay {
 
     #getPageSizeKey() {
         let url = this.ebook.getUrl()
-        let el = this.element
+        let el = this.page
         let fontSize = window.getComputedStyle(el, null).getPropertyValue('font-size')
         return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
     }
