@@ -10,6 +10,8 @@ function getLoadingElement() {
 function imageLoadedPromise(image) {
     return new Promise((resolve, reject) => {
         let imageResolveFunction = function() {
+            console.log("image is loaded")
+            console.log(image.naturalWidth)
             resolve()
         }
         image.onload = imageResolveFunction
@@ -924,18 +926,22 @@ class ComicDisplay {
     }
 
     #buildUI() {
+        const leftMarginPercent = 10
+        const topMarginPercent = 5
+        const toolsButtonPercent = 10
+       
         //this.element.style.position = "fixed"
         this.element.innerHTML = ""
         this.page = document.createElement("img")
         this.page.style.position = "absolute"
         this.element.appendChild(this.page)
-        this.previous = createDivElement(this.element, 0, 0, "10%", "90%", "#ff000055")
+        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000055")
         this.previous.onclick = () => { this.#goToPreviousView() }
-        this.next = createDivElement(this.element, "90%", 0, "10%", "90%", "#00ff0055")
+        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0055")
         this.next.onclick = () => { this.#goToNextView() }
-        this.toolsLeft = createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff55")
-        this.toolsRight = createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff55")
-        this.gestureControls = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffff0055")
+        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff55")
+        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff55")
+        this.gestureControls = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
 
         let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
             var zoomDelta = 1 + scrollValue * this.#getScrollSpeed() * (this.#getInvertScroll() ? 1 : -1)
@@ -961,7 +967,7 @@ class ComicDisplay {
             (x, y) => this.#zoomJump(x, y), 
             mouseGestureScroll
         )
-        this.loading = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffffff")
+        this.loading = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffffff")
         this.loading.innerHTML = "Loading..."
         this.loading.style.display = "none"
     }
@@ -1595,21 +1601,24 @@ class EbookDisplay {
     
 
     #buildUI() {
+        const leftMarginPercent = 10
+        const topMarginPercent = 5
+        const toolsButtonPercent = 10
         //this.element.style.position = "fixed"
         this.element.innerHTML = ""
-        this.previous = createDivElement(this.element, 0, 0, "10%", "90%", "#ff0000")
+        // function createDivElement(parent, left, top, width, height, color) {
+        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff0000")
         this.previous.onclick = () => { this.previousPage() }
-        this.next = createDivElement(this.element, "90%", 0, "10%", "90%", "#00ff00")
-        this.next.onclick = () => { this.nextPage() }
-        this.toolsLeft = createDivElement(this.element, 0, "90%", "10%", "10%", "#ff00ff")
-        this.toolsRight = createDivElement(this.element, "90%", "90%", "10%", "10%", "#00ffff")
-        this.page = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff00")
+        this.next.onclick = () => { this.nextPage() }   
+        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff")
+        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff")
+        this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
 
         //const [sheet] = window.document.styleSheets;
         //sheet.insertRule('h1, h2, h3, h4, h5, h6 { color: red; }', sheet.cssRules.length)
         
-
-        this.shadowPage = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.shadowPage = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
@@ -1619,8 +1628,8 @@ class EbookDisplay {
         this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
         this.toolsRight.onclick = () => {this.tools.style.display = "block"}
         this.tools.onclick = () => {this.tools.style.display = "none"}
-        this.#buildToolsUI()
-        this.loading = createDivElement(this.element, "10%", 0, "80%", "100%", "#ffffff")
+        this.#buildToolsUI(leftMarginPercent, topMarginPercent)
+        this.loading = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
         this.loading.innerHTML = "Loading..."
         this.loading.style.display = "none"
     }
@@ -1633,13 +1642,13 @@ class EbookDisplay {
         this.loading.style.display = "none"
     }
 
-    async #buildToolsUI() {
+    async #buildToolsUI(leftMarginPercent, topMarginPercent) {
         let toc = await this.ebook.getToc()
         let toolsContents = document.createElement("div")
         toolsContents.style.position = "absolute"
-        toolsContents.style.top = 0
-        toolsContents.style.left = "10%"
-        toolsContents.style.width = "80%"
+        toolsContents.style.top = topMarginPercent + "%"
+        toolsContents.style.left = leftMarginPercent + "%"
+        toolsContents.style.width = (100 - 2 * leftMarginPercent) + "%"
         let tocElement = document.createElement("ul")
         for (let i = 0; i < toc.length; i++) {
             let item = document.createElement("li")
