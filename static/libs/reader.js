@@ -928,13 +928,24 @@ class Gestures {
 }
 
 class ComicDisplay {
-    constructor(element, comic, startPosition = 0) {
+    constructor(element, comic, settings) {
         this.element = element
         this.comic = comic
+        this.#configure(settings)
         this.zoomValue = 1
-        this.position = startPosition
+        if (settings.position) {
+            this.position = settings.position
+        } else {
+            this.position = 0
+        }
         this.#buildUI()
-        this.displayPageFor(startPosition).then(() => this.#fitPageToScreen())
+        this.displayPageFor(this.position).then(() => this.#fitPageToScreen())
+    }
+
+    #configure(settings) {
+        if (settings.displayPageForCallback) {
+            this.displayPageForCallback = settings.displayPageForCallback
+        }
     }
 
     #buildUI() {
@@ -1221,6 +1232,9 @@ class ComicDisplay {
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
         this.#hideLoading()
+        if (this.displayPageForCallback) {
+            this.displayPageForCallback(this)
+        }
     }
 
     async #getPageFor(position) {
@@ -1578,16 +1592,44 @@ class EbookWrapper {
 }
 
 class EbookDisplay {
-    constructor(element, ebook, startPosition = 0) {
+    constructor(element, ebook, settings = {}) {
         this.element = element
         this.ebook = ebook
-        this.textSize = 1
-        this.maximumTextSize = 2
-        this.minimumTextSize = 0.5
+        this.#configure(settings)
         this.#buildUI()
+        let startPosition = 0
+        if (settings.position) {
+            startPosition = settings.position
+        }
         this.displayPageFor(startPosition).then(() => {
             this.triggerComputationForAllPages()
         })
+    }
+
+    #configure(settings) {
+        if (settings.initialTextSize) {
+            this.textSize = settings.initialTextSize
+        } else {
+            this.textSize = 1
+        }
+        if (settings.maximumTextSize) {
+            this.maximumTextSize = settings.maximumTextSize
+        } else {
+            this.maximumTextSize = 2
+        }
+        if (settings.minimumTextSize) {
+            this.minimumTextSize = settings.minimumTextSize
+        } else {
+            this.minimumTextSize = 0.5
+        }
+        if (settings.textSizeStep) {
+            this.textSizeStep = settings.textSizeStep
+        } else {
+            this.textSizeStep = 0.1
+        }
+        if (settings.displayPageForCallback) {
+            this.displayPageForCallback = settings.displayPageForCallback
+        }
     }
 
     async #delayedRefresh(timestamp) {
@@ -1626,7 +1668,7 @@ class EbookDisplay {
 
     #increaseTextSize() {
         let currentTextSize = this.textSize
-        let newTextSize = currentTextSize + 0.1
+        let newTextSize = currentTextSize + this.textSizeStep
         if (newTextSize > this.maximumTextSize) {
             newTextSize = this.maximumTextSize
         }
@@ -1635,7 +1677,7 @@ class EbookDisplay {
 
     #decreaseTextSize() {
         let currentTextSize = this.textSize
-        let newTextSize = currentTextSize - 0.1
+        let newTextSize = currentTextSize - this.textSizeStep
         if (newTextSize < this.minimumTextSize) {
             newTextSize = this.minimumTextSize
         }
@@ -1739,11 +1781,15 @@ class EbookDisplay {
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
+            this.position = this.currentPage.start
             this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
             this.#hideLoading()
             let node = await this.ebook.getNodeAt(page.start)
             this.fixLinks(node.key)
             await this.#timeout(10)
+            if (this.displayPageForCallback) {
+                this.displayPageForCallback(this)
+            }
         }
         
         return page
@@ -1939,13 +1985,13 @@ class ChronicReader {
         chronicReaderInstance = this
     }
 
-    #getInitialPosition() {
+    /*#getInitialPosition() {
         if (this.settings.position) {
             return this.settings.position
         } else {
             return 0
         }
-    }
+    }*/
 
     #init() {
         let extension = getFileExtension(this.url)
@@ -1978,9 +2024,9 @@ class ChronicReader {
             }).then(wrapper => {
                 if (wrapper) {
                     if (type == "book") {
-                        this.display = new EbookDisplay(this.element, wrapper, this.#getInitialPosition())
+                        this.display = new EbookDisplay(this.element, wrapper, this.settings)
                     } else if (type == "comic") {
-                        this.display = new ComicDisplay(this.element, wrapper, this.#getInitialPosition())
+                        this.display = new ComicDisplay(this.element, wrapper, this.settings)
                     }
                 }
             })
