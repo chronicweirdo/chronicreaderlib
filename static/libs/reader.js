@@ -927,6 +927,58 @@ class Gestures {
     }
 }
 
+class ColorMap {
+    constructor() {
+        this.map = new Map()
+    }
+    #col(r, g, b) {
+        /*return {
+            "r": r,
+            "g": g,
+            "b": b
+        }*/
+        return r + ',' + g + ',' + b
+    }
+    #components(str) {
+        let c = str.split(",")
+        return [Number(c[0]), Number(c[1]), Number(c[2])]
+    }
+    add(imageData) {
+        let colorArray = imageData.data
+        //console.log("add to matrix")
+        //console.log(colorArray)
+        let color = this.#col(colorArray[0], colorArray[1], colorArray[2])
+        if (this.map.has(color)) {
+            let currentExpression = this.map.get(color)
+            this.map.set(color, currentExpression + 1)
+        } else {
+            this.map.set(color, 1)
+        }
+    }
+    getMostExpressed() {
+        let orderedColors = Array.from(this.map).sort((a, b) => b[1] - a[1])
+        console.log("orderedColors:")
+        console.log(orderedColors)
+        let mostRepresented = orderedColors[0]
+        let selectedColors = orderedColors.filter(v => v[1] / mostRepresented[1] > .1)
+        console.log("selectedColors")
+        console.log(selectedColors)
+        let r = 0
+        let g = 0
+        let b = 0
+        for (let i = 0; i < selectedColors.length; i++) {
+            let c = this.#components(selectedColors[i][0])
+            r = r + c[0]
+            g = g + c[1]
+            b = b + c[2]
+        }
+        r = r / selectedColors.length
+        g = g / selectedColors.length
+        b = b / selectedColors.length
+        return [r, g, b]
+    }
+}
+
 class ComicDisplay {
     constructor(element, comic, settings) {
         this.element = element
@@ -958,12 +1010,12 @@ class ComicDisplay {
         this.page = document.createElement("img")
         this.page.style.position = "absolute"
         this.element.appendChild(this.page)
-        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000055")
+        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000000")
         this.previous.onclick = () => { this.#goToPreviousView() }
-        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0055")
+        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0000")
         this.next.onclick = () => { this.#goToNextView() }
-        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff55")
-        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff55")
+        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
+        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
         this.gestureControls = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
 
         let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
@@ -1226,11 +1278,33 @@ class ComicDisplay {
         this.updateMinimumZoom()
     }
 
+    #computeImageDominantColor() {
+        const canvas = document.createElement('canvas')
+        canvas.width = this.page.naturalWidth
+        canvas.height = this.page.naturalHeight
+        const context = canvas.getContext('2d')
+        console.log(this.page.naturalHeight, this.page.naturalWidth)
+        context.drawImage(this.page, 0, 0, this.page.naturalWidth, this.page.naturalHeight);
+        let cm = new ColorMap()
+        for (let y = 0; y < this.page.naturalHeight; y++) {
+            cm.add(context.getImageData(0, y, 1, 1))
+            cm.add(context.getImageData(this.page.naturalWidth-1, y, 1, 1))
+        }
+        for (let x = 0; x < this.page.naturalWidth; x++) {
+            cm.add(context.getImageData(x, 0, 1, 1))
+            cm.add(context.getImageData(x, this.page.naturalHeight-1, 1, 1))
+        }
+        let dominantColor = cm.getMostExpressed()
+        console.log(dominantColor)
+        document.body.style.backgroundColor = "rgb(" + dominantColor[0] + "," + dominantColor[1] + "," + dominantColor[2] + ")" 
+    }
+
     async displayPageFor(position) {
         this.#showLoading()
         let pageContent = await this.#getPageFor(position)
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
+        this.#computeImageDominantColor()
         this.#hideLoading()
         if (this.displayPageForCallback) {
             this.displayPageForCallback(this)
