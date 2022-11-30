@@ -8,15 +8,27 @@
     <script>
         var urls = ["/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub", "/books/Feature_Comics_111.cbz"];
         var positions = [0, 10]
-        var index = 0;
+        var index = 1;
         var book;
         var bookDisplay;
+        function displayPageCallback(display) {
+            let dominantColor = display.dominantColor
+            if (dominantColor) {
+                document.body.style.backgroundColor = "rgb(" + dominantColor[0] + "," + dominantColor[1] + "," + dominantColor[2] + ")" 
+            } else {
+                document.body.style.backgroundColor = "white"
+            }
+        }
+
         function displayBook() {
             console.log(urls[index])
             let reader = new ChronicReader(
                 urls[index], 
                 document.getElementById("page"),
-                { "position": positions[index]}
+                {
+                    "position": positions[index],
+                    "displayPageForCallback": displayPageCallback
+                }
             )
         }
         function displayNextBook() {
@@ -44,7 +56,7 @@
             height: 80%;
             top: 10%;
             left: 10%;
-            background-color: #cc9999;
+            /*background-color: #cc9999;*/
             overflow: hidden;
         }
     </style>

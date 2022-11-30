@@ -932,11 +932,6 @@ class ColorMap {
         this.map = new Map()
     }
     #col(r, g, b) {
-        /*return {
-            "r": r,
-            "g": g,
-            "b": b
-        }*/
         return r + ',' + g + ',' + b
     }
     #components(str) {
@@ -945,8 +940,6 @@ class ColorMap {
     }
     add(imageData) {
         let colorArray = imageData.data
-        //console.log("add to matrix")
-        //console.log(colorArray)
         let color = this.#col(colorArray[0], colorArray[1], colorArray[2])
         if (this.map.has(color)) {
             let currentExpression = this.map.get(color)
@@ -957,12 +950,8 @@ class ColorMap {
     }
     getMostExpressed() {
         let orderedColors = Array.from(this.map).sort((a, b) => b[1] - a[1])
-        console.log("orderedColors:")
-        console.log(orderedColors)
         let mostRepresented = orderedColors[0]
         let selectedColors = orderedColors.filter(v => v[1] / mostRepresented[1] > .1)
-        console.log("selectedColors")
-        console.log(selectedColors)
         let r = 0
         let g = 0
         let b = 0
@@ -1283,7 +1272,6 @@ class ComicDisplay {
         canvas.width = this.page.naturalWidth
         canvas.height = this.page.naturalHeight
         const context = canvas.getContext('2d')
-        console.log(this.page.naturalHeight, this.page.naturalWidth)
         context.drawImage(this.page, 0, 0, this.page.naturalWidth, this.page.naturalHeight);
         let cm = new ColorMap()
         for (let y = 0; y < this.page.naturalHeight; y++) {
@@ -1295,8 +1283,7 @@ class ComicDisplay {
             cm.add(context.getImageData(x, this.page.naturalHeight-1, 1, 1))
         }
         let dominantColor = cm.getMostExpressed()
-        console.log(dominantColor)
-        document.body.style.backgroundColor = "rgb(" + dominantColor[0] + "," + dominantColor[1] + "," + dominantColor[2] + ")" 
+        this.dominantColor = dominantColor
     }
 
     async displayPageFor(position) {
