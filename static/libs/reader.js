@@ -970,90 +970,59 @@ class ColorMap {
 
 class Display {
     LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
+    SVG_NAMESPACE = "http://www.w3.org/2000/svg"
     constructor() {
+    }
+
+    createSvg(topX, topY, bottomX, bottomY, left, top, width, height) {
+        let svg = document.createElementNS(this.SVG_NAMESPACE, "svg")
+        svg.setAttribute("viewBox", topX + " " + topY + " " + bottomX + " " + bottomY)
+        svg.style.position = "absolute"
+        svg.style.width = width
+        svg.style.height = height
+        svg.style.top = top
+        svg.style.left = left
+        return svg
+    }
+
+    createPath(d, strokeWidth) {
+        let path = document.createElementNS(this.SVG_NAMESPACE, "path")
+        path.setAttribute("d", d)
+        path.setAttribute("stroke-width", strokeWidth)
+        path.setAttribute("stroke-linecap", "round")
+        path.setAttribute("fill", "none")
+        return path
     }
     
     getNextSvg() {
-        const ns = "http://www.w3.org/2000/svg"
-        let svg = document.createElementNS(ns, "svg")
-        svg.setAttribute("viewBox", "0 0 10 40")
-        //svg.setAttribute("width", 10)
-        //svg.setAttribute("height", 40)
-        svg.style.position = "absolute"
-        svg.style.width = "20%"
-        svg.style.height = "10%"
-        svg.style.top = "45%"
-        svg.style.left = "40%"
-        let path = document.createElementNS(ns, "path")
-        path.setAttribute("d", "M 2 2 L 8 20 L 2 38")
-        path.setAttribute("stroke-width", "3")
-        path.setAttribute("stroke-linecap", "round")
-        path.setAttribute("fill", "none")
+        let svg = this.createSvg(0, 0, 10, 40, "40%", "45%", "20%", "10%")
+        let path = this.createPath("M 2 2 L 8 20 L 2 38", 3)
         svg.appendChild(path)
         return svg
     }
 
     getPreviousSvg() {
-        const ns = "http://www.w3.org/2000/svg"
-        let svg = document.createElementNS(ns, "svg")
-        svg.setAttribute("viewBox", "0 0 10 40")
-        //svg.setAttribute("width", 10)
-        //svg.setAttribute("height", 40)
-        svg.style.position = "absolute"
-        svg.style.width = "20%"
-        svg.style.height = "10%"
-        svg.style.top = "45%"
-        svg.style.left = "40%"
-        let path = document.createElementNS(ns, "path")
-        path.setAttribute("d", "M 8 2 L 2 20 L 8 38")
-        path.setAttribute("stroke-width", "3")
-        path.setAttribute("stroke-linecap", "round")
-        path.setAttribute("fill", "none")
+        let svg = this.createSvg(0, 0, 10, 40, "40%", "45%", "20%", "10%")
+        let path = this.createPath("M 8 2 L 2 20 L 8 38", 3)
         svg.appendChild(path)
         return svg
     }
 
     getToolsSvg() {
-        const ns = "http://www.w3.org/2000/svg"
-        let svg = document.createElementNS(ns, "svg")
-        svg.setAttribute("viewBox", "0 0 40 10")
-        //svg.setAttribute("width", 40)
-        //svg.setAttribute("height", 10)
-        svg.style.position = "absolute"
-        svg.style.width = "80%"
-        svg.style.height = "10%"
-        svg.style.top = "45%"
-        svg.style.left = "10%"
-        let path = document.createElementNS(ns, "path")
-        path.setAttribute("d", "M 2 8 L 20 2 L 38 8")
-        path.setAttribute("stroke-width", "3")
-        path.setAttribute("stroke-linecap", "round")
-        path.setAttribute("fill", "none")
+        let svg = this.createSvg(0, 0, 40, 10, "10%", "45%", "80%", "10%")
+        let path = this.createPath("M 2 8 L 20 2 L 38 8", 3)
         svg.appendChild(path)
         return svg
     }
 
     getLoadingSvg() {
-        const ns = "http://www.w3.org/2000/svg"
-        let svg = document.createElementNS(ns, "svg")
-        svg.setAttribute("viewBox", "-5 -5 110 110")
-        //svg.setAttribute("width", 40)
-        //svg.setAttribute("height", 10)
-        svg.style.position = "absolute"
-        svg.style.width = "10%"
-        svg.style.height = "10%"
-        svg.style.top = "45%"
-        svg.style.left = "45%"
-        let path = document.createElementNS(ns, "path")
-        path.setAttribute("d", "M 50 50 m -50, 0 a 50,50 0 1,0 100,0 a 50,50 0 1,0 -100,0")
-        path.setAttribute("stroke-width", "10")
-        path.setAttribute("stroke-linecap", "round")
-        path.setAttribute("fill", "none")
-        svg.appendChild(path)
-
+        let svg = this.createSvg(-5, -5, 110, 110, "45%", "45%", "10%", "10%")
+        let path = this.createPath("M 50 50 m -50, 0 a 50,50 0 1,0 100,0 a 50,50 0 1,0 -100,0", 10)
         path.style.strokeDasharray = 320
         path.style.strokeDashoffset = 0
         path.style.animation = "loadinganimation 2s linear infinite"
+        svg.appendChild(path)
+        
         if (!document.getElementById(this.LOADING_ANIMATION_STYLE_ID)) {
             var animationStyle = document.createElement('style')
             animationStyle.id = this.LOADING_ANIMATION_STYLE_ID
