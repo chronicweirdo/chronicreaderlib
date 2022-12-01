@@ -1049,32 +1049,40 @@ class ComicDisplay {
     }
 
     #configure(settings) {
-        if (settings.displayControls) {
+        if (settings.displayControls != undefined) {
             this.displayControls = settings.displayControls
         } else {
             this.displayControls = true
         }
-        if (settings.controlsColor) {
+        if (settings.controlsColor != undefined) {
             this.controlsColor = settings.controlsColor
         } else {
             this.controlsColor = "#ffffffaa"
         }
-        if (settings.displayPageForCallback) {
+        if (settings.displayPageForCallback != undefined) {
             this.displayPageForCallback = settings.displayPageForCallback
+        }
+        if (settings.showTools != undefined) {
+            this.showTools = settings.showTools
+        } else {
+            this.showTools = false
         }
     }
 
     setControlsColor(color) {
         this.previous.style.stroke = color
         this.next.style.stroke = color
-        this.toolsLeft.style.stroke = color
-        this.toolsRight.style.stroke = color
+        if (this.toolsLeft) this.toolsLeft.style.stroke = color
+        if (this.toolsRight) this.toolsRight.style.stroke = color
     }
 
     #buildUI() {
         const leftMarginPercent = 10
         const topMarginPercent = 5
-        const toolsButtonPercent = 10
+        var toolsButtonPercent = 10
+        if (this.showTools == false) {
+            toolsButtonPercent = 0
+        }
        
         //this.element.style.position = "fixed"
         this.element.innerHTML = ""
@@ -1091,13 +1099,18 @@ class ComicDisplay {
             this.next.appendChild(DisplayTools.getNextSvg())
         }
         this.next.onclick = () => { this.#goToNextView() }
-        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
-        if (this.displayControls) {
-            this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
+        if (this.showTools) {
+            this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
+            if (this.displayControls) {
+                this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
+            }
+            this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
+            if (this.displayControls) {
+                this.toolsRight.append(DisplayTools.getToolsSvg())
+                
+            }
         }
-        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
         if (this.displayControls) {
-            this.toolsRight.append(DisplayTools.getToolsSvg())
             this.setControlsColor(this.controlsColor)
         }
         this.gestureControls = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
@@ -1763,38 +1776,44 @@ class EbookDisplay {
     }
 
     #configure(settings) {
-        if (settings.initialTextSize) {
+        if (settings.initialTextSize != undefined) {
             this.textSize = settings.initialTextSize
         } else {
             this.textSize = 1
         }
-        if (settings.maximumTextSize) {
+        if (settings.maximumTextSize != undefined) {
             this.maximumTextSize = settings.maximumTextSize
         } else {
             this.maximumTextSize = 2
         }
-        if (settings.minimumTextSize) {
+        if (settings.minimumTextSize != undefined) {
             this.minimumTextSize = settings.minimumTextSize
         } else {
             this.minimumTextSize = 0.5
         }
-        if (settings.textSizeStep) {
+        if (settings.textSizeStep != undefined) {
             this.textSizeStep = settings.textSizeStep
         } else {
             this.textSizeStep = 0.1
         }
-        if (settings.displayControls) {
+        if (settings.displayControls != undefined) {
             this.displayControls = settings.displayControls
         } else {
             this.displayControls = true
         }
-        if (settings.controlsColor) {
+        if (settings.controlsColor != undefined) {
             this.controlsColor = settings.controlsColor
         } else {
             this.controlsColor = "#000000ff"
         }
-        if (settings.displayPageForCallback) {
+        if (settings.displayPageForCallback != undefined) {
             this.displayPageForCallback = settings.displayPageForCallback
+        }
+        if (settings.showTools != undefined) {
+            console.log("setting show tools to " + settings.showTools)
+            this.showTools = settings.showTools
+        } else {
+            this.showTools = true
         }
     }
 
@@ -1853,14 +1872,17 @@ class EbookDisplay {
     setControlsColor(color) {
         this.previous.style.stroke = color
         this.next.style.stroke = color
-        this.toolsLeft.style.stroke = color
-        this.toolsRight.style.stroke = color
+        if (this.toolsLeft) this.toolsLeft.style.stroke = color
+        if (this.toolsRight) this.toolsRight.style.stroke = color
     }
 
     #buildUI() {
         const leftMarginPercent = 10
         const topMarginPercent = 5
-        const toolsButtonPercent = 10
+        var toolsButtonPercent = 10
+        if (this.showTools == false) {
+            toolsButtonPercent = 0
+        }
         //this.element.style.position = "fixed"
         this.element.innerHTML = ""
         // function createDivElement(parent, left, top, width, height, color) {
@@ -1874,13 +1896,17 @@ class EbookDisplay {
             this.next.appendChild(DisplayTools.getNextSvg())
         }
         this.next.onclick = () => { this.nextPage() }
-        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
-        if (this.displayControls) {
-            this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
+        if (this.showTools) {
+            this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
+            if (this.displayControls) {
+                this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
+            }
+            this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
+            if (this.displayControls) {
+                this.toolsRight.appendChild(DisplayTools.getToolsSvg())
+            }
         }
-        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
         if (this.displayControls) {
-            this.toolsRight.appendChild(DisplayTools.getToolsSvg())
             this.setControlsColor(this.controlsColor)
         }
         this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff00")
@@ -1894,13 +1920,15 @@ class EbookDisplay {
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
-        this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
-        this.tools.style.display = "none"
-        this.tools.style.overflow = "scroll"
-        this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
-        this.toolsRight.onclick = () => {this.tools.style.display = "block"}
-        this.tools.onclick = () => {this.tools.style.display = "none"}
-        this.#buildToolsUI(leftMarginPercent, topMarginPercent)
+        if (this.showTools) {
+            this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
+            this.tools.style.display = "none"
+            this.tools.style.overflow = "scroll"
+            this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
+            this.toolsRight.onclick = () => {this.tools.style.display = "block"}
+            this.tools.onclick = () => {this.tools.style.display = "none"}
+            this.#buildToolsUI(leftMarginPercent, topMarginPercent)
+        }
         this.loading = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
         this.loading.innerHTML = "Loading..."
         this.loading.style.display = "none"
