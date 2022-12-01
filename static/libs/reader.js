@@ -969,11 +969,9 @@ class ColorMap {
 }
 
 class DisplayTools {
-    static DEFAULT_COLOR = "#00000055"
-    static getNextSvg(color = DisplayTools.DEFAULT_COLOR) {
+    static getNextSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
-        //svg.setAttribute("xmlns", "http://www.w3.org/2000/svg")
         svg.setAttribute("viewBox", "0 0 10 40")
         svg.setAttribute("width", 10)
         svg.setAttribute("height", 40)
@@ -985,7 +983,6 @@ class DisplayTools {
         let path = document.createElementNS(ns, "path")
         path.setAttribute("id", "nextbutton")
         path.setAttribute("d", "M 2 2 L 8 20 L 2 38")
-        path.setAttribute("stroke", color)
         path.setAttribute("stroke-width", "3")
         path.setAttribute("stroke-linecap", "round")
         path.setAttribute("fill", "none")
@@ -993,10 +990,9 @@ class DisplayTools {
         return svg
     }
 
-    static getPreviousSvg(color = DisplayTools.DEFAULT_COLOR) {
+    static getPreviousSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
-        //svg.setAttribute("xmlns", "http://www.w3.org/2000/svg")
         svg.setAttribute("viewBox", "0 0 10 40")
         svg.setAttribute("width", 10)
         svg.setAttribute("height", 40)
@@ -1008,7 +1004,6 @@ class DisplayTools {
         let path = document.createElementNS(ns, "path")
         path.setAttribute("id", "nextbutton")
         path.setAttribute("d", "M 8 2 L 2 20 L 8 38")
-        path.setAttribute("stroke", color)
         path.setAttribute("stroke-width", "3")
         path.setAttribute("stroke-linecap", "round")
         path.setAttribute("fill", "none")
@@ -1016,10 +1011,9 @@ class DisplayTools {
         return svg
     }
 
-    static getToolsSvg(color = DisplayTools.DEFAULT_COLOR) {
+    static getToolsSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
-        //svg.setAttribute("xmlns", "http://www.w3.org/2000/svg")
         svg.setAttribute("viewBox", "0 0 40 10")
         svg.setAttribute("width", 40)
         svg.setAttribute("height", 10)
@@ -1031,7 +1025,6 @@ class DisplayTools {
         let path = document.createElementNS(ns, "path")
         path.setAttribute("id", "nextbutton")
         path.setAttribute("d", "M 2 8 L 20 2 L 38 8")
-        path.setAttribute("stroke", color)
         path.setAttribute("stroke-width", "3")
         path.setAttribute("stroke-linecap", "round")
         path.setAttribute("fill", "none")
@@ -1071,6 +1064,13 @@ class ComicDisplay {
         }
     }
 
+    setControlsColor(color) {
+        this.previous.style.stroke = color
+        this.next.style.stroke = color
+        this.toolsLeft.style.stroke = color
+        this.toolsRight.style.stroke = color
+    }
+
     #buildUI() {
         const leftMarginPercent = 10
         const topMarginPercent = 5
@@ -1083,21 +1083,22 @@ class ComicDisplay {
         this.element.appendChild(this.page)
         this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000000")
         if (this.displayControls) {
-            this.previous.appendChild(DisplayTools.getPreviousSvg(this.controlsColor))
+            this.previous.appendChild(DisplayTools.getPreviousSvg())
         }
         this.previous.onclick = () => { this.#goToPreviousView() }
         this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0000")
         if (this.displayControls) {
-            this.next.appendChild(DisplayTools.getNextSvg(this.controlsColor))
+            this.next.appendChild(DisplayTools.getNextSvg())
         }
         this.next.onclick = () => { this.#goToNextView() }
         this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
         if (this.displayControls) {
-            this.toolsLeft.appendChild(DisplayTools.getToolsSvg(this.controlsColor))
+            this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
         }
         this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
         if (this.displayControls) {
-            this.toolsRight.append(DisplayTools.getToolsSvg(this.controlsColor))
+            this.toolsRight.append(DisplayTools.getToolsSvg())
+            this.setControlsColor(this.controlsColor)
         }
         this.gestureControls = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
 
@@ -1849,6 +1850,13 @@ class EbookDisplay {
         this.#setTextSize(newTextSize)
     }
 
+    setControlsColor(color) {
+        this.previous.style.stroke = color
+        this.next.style.stroke = color
+        this.toolsLeft.style.stroke = color
+        this.toolsRight.style.stroke = color
+    }
+
     #buildUI() {
         const leftMarginPercent = 10
         const topMarginPercent = 5
@@ -1858,21 +1866,22 @@ class EbookDisplay {
         // function createDivElement(parent, left, top, width, height, color) {
         this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000000")
         if (this.displayControls) {
-            this.previous.appendChild(DisplayTools.getPreviousSvg(this.controlsColor))
+            this.previous.appendChild(DisplayTools.getPreviousSvg())
         }
         this.previous.onclick = () => { this.previousPage() }
         this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0000")
         if (this.displayControls) {
-            this.next.appendChild(DisplayTools.getNextSvg(this.controlsColor))
+            this.next.appendChild(DisplayTools.getNextSvg())
         }
         this.next.onclick = () => { this.nextPage() }
         this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
         if (this.displayControls) {
-            this.toolsLeft.appendChild(DisplayTools.getToolsSvg(this.controlsColor))
+            this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
         }
         this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
         if (this.displayControls) {
-            this.toolsRight.appendChild(DisplayTools.getToolsSvg(this.controlsColor))
+            this.toolsRight.appendChild(DisplayTools.getToolsSvg())
+            this.setControlsColor(this.controlsColor)
         }
         this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff00")
         this.page.style.fontSize = this.textSize + "em"

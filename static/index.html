@@ -11,10 +11,18 @@
         var index = 1;
         var book;
         var bookDisplay;
+        function negative(col) {
+            return [255 - col[0], 255 - col[1], 255 - col[2]]
+        }
         function displayPageCallback(display) {
             let dominantColor = display.dominantColor
             if (dominantColor) {
-                document.body.style.backgroundColor = "rgb(" + dominantColor[0] + "," + dominantColor[1] + "," + dominantColor[2] + ")" 
+                console.log(dominantColor)
+                let color = "rgb(" + dominantColor[0] + "," + dominantColor[1] + "," + dominantColor[2] + ")" 
+                document.body.style.backgroundColor = color
+                let neg = negative(dominantColor)
+                console.log(neg)
+                display.setControlsColor("rgba(" + neg[0] + "," + neg[1] + "," + neg[2] + ",0.5)")
             } else {
                 document.body.style.backgroundColor = "white"
             }
