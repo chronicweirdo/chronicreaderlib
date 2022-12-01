@@ -971,7 +971,13 @@ class ColorMap {
 class Display {
     LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
     SVG_NAMESPACE = "http://www.w3.org/2000/svg"
-    constructor() {
+    constructor(element, book, settings) {
+        this.element = element
+        this.book = book
+        this.configure(settings)
+    }
+
+    configure(settings) {
     }
 
     createSvg(topX, topY, bottomX, bottomY, left, top, width, height) {
@@ -1044,11 +1050,11 @@ class Display {
 }
 
 class ComicDisplay extends Display {
-    constructor(element, comic, settings) {
-        super()
-        this.element = element
-        this.comic = comic
-        this.#configure(settings)
+    constructor(element, book, settings) {
+        super(element, book, settings)
+        //this.element = element
+        //this.comic = comic
+        //this.#configure(settings)
         this.zoomValue = 1
         if (settings.position) {
             this.position = settings.position
@@ -1059,7 +1065,7 @@ class ComicDisplay extends Display {
         this.displayPageFor(this.position).then(() => this.#fitPageToScreen())
     }
 
-    #configure(settings) {
+    configure(settings) {
         if (settings.displayControls != undefined) {
             this.displayControls = settings.displayControls
         } else {
@@ -1421,12 +1427,12 @@ class ComicDisplay extends Display {
     }
 
     async #getPageFor(position) {
-        let page = await this.comic.getContentsAt(position)
+        let page = await this.book.getContentsAt(position)
         return page
     }
 
     async nextPage() {
-        let size = await this.comic.getSize()
+        let size = await this.book.getSize()
         if (this.position < size - 1) {
             this.position = this.position + 1
             this.displayPageFor(this.position).then(() => {
@@ -1774,12 +1780,9 @@ class EbookWrapper {
     }
 }
 
-class EbookDisplay extends Display{
-    constructor(element, ebook, settings = {}) {
-        super()
-        this.element = element
-        this.ebook = ebook
-        this.#configure(settings)
+class EbookDisplay extends Display {
+    constructor(element, book, settings = {}) {
+        super(element, book, settings)
         this.#buildUI()
         let startPosition = 0
         if (settings.position) {
@@ -1790,7 +1793,7 @@ class EbookDisplay extends Display{
         })
     }
 
-    #configure(settings) {
+    configure(settings) {
         if (settings.initialTextSize != undefined) {
             this.textSize = settings.initialTextSize
         } else {
@@ -1851,7 +1854,7 @@ class EbookDisplay extends Display{
     }
 
     triggerComputationForAllPages() {
-        this.ebook.getSize()
+        this.book.getSize()
             .then(size => this.#getPageFor(size)
                 .then((page) => {
                     if (page != null) console.log("computed final page " + page.start + " - " + page.end)
@@ -1964,7 +1967,7 @@ class EbookDisplay extends Display{
     }
 
     async #buildToolsUI(leftMarginPercent, topMarginPercent) {
-        let toc = await this.ebook.getToc()
+        let toc = await this.book.getToc()
         let toolsContents = document.createElement("div")
         toolsContents.style.position = "absolute"
         toolsContents.style.top = topMarginPercent + "%"
@@ -1998,7 +2001,7 @@ class EbookDisplay extends Display{
             let linkElement = links[i]
             let linkHref = linkElement.getAttribute("href")
             if (linkHref != null && linkHref.length > 0) {
-                let position = await this.ebook.getPositionForLink(contextFilename, linkHref)
+                let position = await this.book.getPositionForLink(contextFilename, linkHref)
                 if (position != null) {
                     linkElement.onclick = () => this.displayPageFor(position)
                     linkElement.removeAttribute("href")
@@ -2013,9 +2016,9 @@ class EbookDisplay extends Display{
         if (page != null) {
             this.currentPage = page
             this.position = this.currentPage.start
-            this.page.innerHTML = await this.ebook.getContentsAt(page.start, page.end)
+            this.page.innerHTML = await this.book.getContentsAt(page.start, page.end)
             this.#hideLoading()
-            let node = await this.ebook.getNodeAt(page.start)
+            let node = await this.book.getNodeAt(page.start)
             this.fixLinks(node.key)
             await this.#timeout(10)
             if (this.displayPageForCallback) {
@@ -2027,7 +2030,7 @@ class EbookDisplay extends Display{
     }
 
     async nextPage() {
-        let size = await this.ebook.getSize()
+        let size = await this.book.getSize()
         if (this.currentPage && this.currentPage.end < size) {
             this.displayPageFor(this.currentPage.end + 1)
         }
@@ -2048,7 +2051,7 @@ class EbookDisplay extends Display{
     }
 
     #getPageSizeKey() {
-        let url = this.ebook.getUrl()
+        let url = this.book.getUrl()
         let el = this.page
         let fontSize = window.getComputedStyle(el, null).getPropertyValue('font-size')
         return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
@@ -2091,12 +2094,12 @@ class EbookDisplay extends Display{
 
     async #computeMaximalPage(start) {
         let previousEnd = null
-        let end = await this.ebook.findSpaceAfter(start)
+        let end = await this.book.findSpaceAfter(start)
         this.shadowElement.innerHTML = ""
         while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
             previousEnd = end
-            end = await this.ebook.findSpaceAfter(previousEnd)
-            this.shadowElement.innerHTML = await this.ebook.getContentsAt(start, end)
+            end = await this.book.findSpaceAfter(previousEnd)
+            this.shadowElement.innerHTML = await this.book.getContentsAt(start, end)
         }
         if (previousEnd != null) {
             return new Page(start, previousEnd)
