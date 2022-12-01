@@ -968,6 +968,78 @@ class ColorMap {
     }
 }
 
+class DisplayTools {
+    static DEFAULT_COLOR = "#00000055"
+    static getNextSvg(color = DisplayTools.DEFAULT_COLOR) {
+        const ns = "http://www.w3.org/2000/svg"
+        let svg = document.createElementNS(ns, "svg")
+        //svg.setAttribute("xmlns", "http://www.w3.org/2000/svg")
+        svg.setAttribute("viewBox", "0 0 10 40")
+        svg.setAttribute("width", 10)
+        svg.setAttribute("height", 40)
+        svg.style.position = "absolute"
+        svg.style.width = "20%"
+        svg.style.height = "10%"
+        svg.style.top = "45%"
+        svg.style.left = "40%"
+        let path = document.createElementNS(ns, "path")
+        path.setAttribute("id", "nextbutton")
+        path.setAttribute("d", "M 2 2 L 8 20 L 2 38")
+        path.setAttribute("stroke", color)
+        path.setAttribute("stroke-width", "3")
+        path.setAttribute("stroke-linecap", "round")
+        path.setAttribute("fill", "none")
+        svg.appendChild(path)
+        return svg
+    }
+
+    static getPreviousSvg(color = DisplayTools.DEFAULT_COLOR) {
+        const ns = "http://www.w3.org/2000/svg"
+        let svg = document.createElementNS(ns, "svg")
+        //svg.setAttribute("xmlns", "http://www.w3.org/2000/svg")
+        svg.setAttribute("viewBox", "0 0 10 40")
+        svg.setAttribute("width", 10)
+        svg.setAttribute("height", 40)
+        svg.style.position = "absolute"
+        svg.style.width = "20%"
+        svg.style.height = "10%"
+        svg.style.top = "45%"
+        svg.style.left = "40%"
+        let path = document.createElementNS(ns, "path")
+        path.setAttribute("id", "nextbutton")
+        path.setAttribute("d", "M 8 2 L 2 20 L 8 38")
+        path.setAttribute("stroke", color)
+        path.setAttribute("stroke-width", "3")
+        path.setAttribute("stroke-linecap", "round")
+        path.setAttribute("fill", "none")
+        svg.appendChild(path)
+        return svg
+    }
+
+    static getToolsSvg(color = DisplayTools.DEFAULT_COLOR) {
+        const ns = "http://www.w3.org/2000/svg"
+        let svg = document.createElementNS(ns, "svg")
+        //svg.setAttribute("xmlns", "http://www.w3.org/2000/svg")
+        svg.setAttribute("viewBox", "0 0 40 10")
+        svg.setAttribute("width", 40)
+        svg.setAttribute("height", 10)
+        svg.style.position = "absolute"
+        svg.style.width = "80%"
+        svg.style.height = "10%"
+        svg.style.top = "45%"
+        svg.style.left = "10%"
+        let path = document.createElementNS(ns, "path")
+        path.setAttribute("id", "nextbutton")
+        path.setAttribute("d", "M 2 8 L 20 2 L 38 8")
+        path.setAttribute("stroke", color)
+        path.setAttribute("stroke-width", "3")
+        path.setAttribute("stroke-linecap", "round")
+        path.setAttribute("fill", "none")
+        svg.appendChild(path)
+        return svg
+    }
+}
+
 class ComicDisplay {
     constructor(element, comic, settings) {
         this.element = element
@@ -984,6 +1056,16 @@ class ComicDisplay {
     }
 
     #configure(settings) {
+        if (settings.displayControls) {
+            this.displayControls = settings.displayControls
+        } else {
+            this.displayControls = true
+        }
+        if (settings.controlsColor) {
+            this.controlsColor = settings.controlsColor
+        } else {
+            this.controlsColor = "#ffffffaa"
+        }
         if (settings.displayPageForCallback) {
             this.displayPageForCallback = settings.displayPageForCallback
         }
@@ -1000,11 +1082,23 @@ class ComicDisplay {
         this.page.style.position = "absolute"
         this.element.appendChild(this.page)
         this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000000")
+        if (this.displayControls) {
+            this.previous.appendChild(DisplayTools.getPreviousSvg(this.controlsColor))
+        }
         this.previous.onclick = () => { this.#goToPreviousView() }
         this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0000")
+        if (this.displayControls) {
+            this.next.appendChild(DisplayTools.getNextSvg(this.controlsColor))
+        }
         this.next.onclick = () => { this.#goToNextView() }
         this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
+        if (this.displayControls) {
+            this.toolsLeft.appendChild(DisplayTools.getToolsSvg(this.controlsColor))
+        }
         this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
+        if (this.displayControls) {
+            this.toolsRight.append(DisplayTools.getToolsSvg(this.controlsColor))
+        }
         this.gestureControls = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
 
         let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
@@ -1688,6 +1782,16 @@ class EbookDisplay {
         } else {
             this.textSizeStep = 0.1
         }
+        if (settings.displayControls) {
+            this.displayControls = settings.displayControls
+        } else {
+            this.displayControls = true
+        }
+        if (settings.controlsColor) {
+            this.controlsColor = settings.controlsColor
+        } else {
+            this.controlsColor = "#000000ff"
+        }
         if (settings.displayPageForCallback) {
             this.displayPageForCallback = settings.displayPageForCallback
         }
@@ -1752,13 +1856,25 @@ class EbookDisplay {
         //this.element.style.position = "fixed"
         this.element.innerHTML = ""
         // function createDivElement(parent, left, top, width, height, color) {
-        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff0000")
+        this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000000")
+        if (this.displayControls) {
+            this.previous.appendChild(DisplayTools.getPreviousSvg(this.controlsColor))
+        }
         this.previous.onclick = () => { this.previousPage() }
-        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff00")
-        this.next.onclick = () => { this.nextPage() }   
-        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff")
-        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff")
-        this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
+        this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0000")
+        if (this.displayControls) {
+            this.next.appendChild(DisplayTools.getNextSvg(this.controlsColor))
+        }
+        this.next.onclick = () => { this.nextPage() }
+        this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
+        if (this.displayControls) {
+            this.toolsLeft.appendChild(DisplayTools.getToolsSvg(this.controlsColor))
+        }
+        this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
+        if (this.displayControls) {
+            this.toolsRight.appendChild(DisplayTools.getToolsSvg(this.controlsColor))
+        }
+        this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff00")
         this.page.style.fontSize = this.textSize + "em"
 
         //const [sheet] = window.document.styleSheets;
