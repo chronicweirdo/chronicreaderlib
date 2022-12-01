@@ -968,14 +968,17 @@ class ColorMap {
     }
 }
 
-class DisplayTools {
-    static LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
-    static getNextSvg() {
+class Display {
+    LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
+    constructor() {
+    }
+    
+    getNextSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
         svg.setAttribute("viewBox", "0 0 10 40")
-        svg.setAttribute("width", 10)
-        svg.setAttribute("height", 40)
+        //svg.setAttribute("width", 10)
+        //svg.setAttribute("height", 40)
         svg.style.position = "absolute"
         svg.style.width = "20%"
         svg.style.height = "10%"
@@ -990,12 +993,12 @@ class DisplayTools {
         return svg
     }
 
-    static getPreviousSvg() {
+    getPreviousSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
         svg.setAttribute("viewBox", "0 0 10 40")
-        svg.setAttribute("width", 10)
-        svg.setAttribute("height", 40)
+        //svg.setAttribute("width", 10)
+        //svg.setAttribute("height", 40)
         svg.style.position = "absolute"
         svg.style.width = "20%"
         svg.style.height = "10%"
@@ -1010,12 +1013,12 @@ class DisplayTools {
         return svg
     }
 
-    static getToolsSvg() {
+    getToolsSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
         svg.setAttribute("viewBox", "0 0 40 10")
-        svg.setAttribute("width", 40)
-        svg.setAttribute("height", 10)
+        //svg.setAttribute("width", 40)
+        //svg.setAttribute("height", 10)
         svg.style.position = "absolute"
         svg.style.width = "80%"
         svg.style.height = "10%"
@@ -1030,7 +1033,7 @@ class DisplayTools {
         return svg
     }
 
-    static getLoadingSvg() {
+    getLoadingSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
         svg.setAttribute("viewBox", "-5 -5 110 110")
@@ -1047,28 +1050,13 @@ class DisplayTools {
         path.setAttribute("stroke-linecap", "round")
         path.setAttribute("fill", "none")
         svg.appendChild(path)
-        /*
-        .path {
-            stroke-dasharray: 320;
-            stroke-dashoffset: 0;
-            animation: dash 2s linear infinite;
-        }
-  
-        @keyframes dash {
-            from {
-                stroke-dashoffset: 640;
-            }
-            to {
-                stroke-dashoffset: 0;
-            }
-        }
-        */
+
         path.style.strokeDasharray = 320
         path.style.strokeDashoffset = 0
         path.style.animation = "loadinganimation 2s linear infinite"
-        if (!document.getElementById(DisplayTools.LOADING_ANIMATION_STYLE_ID)) {
+        if (!document.getElementById(this.LOADING_ANIMATION_STYLE_ID)) {
             var animationStyle = document.createElement('style')
-            animationStyle.id = DisplayTools.LOADING_ANIMATION_STYLE_ID
+            animationStyle.id = this.LOADING_ANIMATION_STYLE_ID
             animationStyle.innerHTML = "\
                 @keyframes loadinganimation {\
                     from {\
@@ -1086,8 +1074,9 @@ class DisplayTools {
     }
 }
 
-class ComicDisplay {
+class ComicDisplay extends Display {
     constructor(element, comic, settings) {
+        super()
         this.element = element
         this.comic = comic
         this.#configure(settings)
@@ -1145,22 +1134,22 @@ class ComicDisplay {
         this.element.appendChild(this.page)
         this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000000")
         if (this.displayControls) {
-            this.previous.appendChild(DisplayTools.getPreviousSvg())
+            this.previous.appendChild(this.getPreviousSvg())
         }
         this.previous.onclick = () => { this.#goToPreviousView() }
         this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0000")
         if (this.displayControls) {
-            this.next.appendChild(DisplayTools.getNextSvg())
+            this.next.appendChild(this.getNextSvg())
         }
         this.next.onclick = () => { this.#goToNextView() }
         if (this.showTools) {
             this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
             if (this.displayControls) {
-                this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
+                this.toolsLeft.appendChild(this.getToolsSvg())
             }
             this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
             if (this.displayControls) {
-                this.toolsRight.append(DisplayTools.getToolsSvg())
+                this.toolsRight.append(this.getToolsSvg())
                 
             }
         }
@@ -1193,7 +1182,7 @@ class ComicDisplay {
         )
         this.loading = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
         //this.loading.innerHTML = "Loading..."
-        this.loading.appendChild(DisplayTools.getLoadingSvg())
+        this.loading.appendChild(this.getLoadingSvg())
         //this.loading.style.display = "none"
         if (this.displayControls) {
             this.setControlsColor(this.controlsColor)
@@ -1816,8 +1805,9 @@ class EbookWrapper {
     }
 }
 
-class EbookDisplay {
+class EbookDisplay extends Display{
     constructor(element, ebook, settings = {}) {
+        super()
         this.element = element
         this.ebook = ebook
         this.#configure(settings)
@@ -1945,22 +1935,22 @@ class EbookDisplay {
         // function createDivElement(parent, left, top, width, height, color) {
         this.previous = createDivElement(this.element, 0, 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#ff000000")
         if (this.displayControls) {
-            this.previous.appendChild(DisplayTools.getPreviousSvg())
+            this.previous.appendChild(this.getPreviousSvg())
         }
         this.previous.onclick = () => { this.previousPage() }
         this.next = createDivElement(this.element, (100-leftMarginPercent) + "%", 0, (leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", "#00ff0000")
         if (this.displayControls) {
-            this.next.appendChild(DisplayTools.getNextSvg())
+            this.next.appendChild(this.getNextSvg())
         }
         this.next.onclick = () => { this.nextPage() }
         if (this.showTools) {
             this.toolsLeft = createDivElement(this.element, 0, (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#ff00ff00")
             if (this.displayControls) {
-                this.toolsLeft.appendChild(DisplayTools.getToolsSvg())
+                this.toolsLeft.appendChild(this.getToolsSvg())
             }
             this.toolsRight = createDivElement(this.element, (100-leftMarginPercent) + "%", (100-toolsButtonPercent) + "%", leftMarginPercent + "%", toolsButtonPercent + "%", "#00ffff00")
             if (this.displayControls) {
-                this.toolsRight.appendChild(DisplayTools.getToolsSvg())
+                this.toolsRight.appendChild(this.getToolsSvg())
             }
         }
         this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff00")
@@ -1986,7 +1976,7 @@ class EbookDisplay {
         this.loading = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
         //this.loading.innerHTML = "Loading..."
         //this.loading.style.display = "none"
-        this.loading.appendChild(DisplayTools.getLoadingSvg())
+        this.loading.appendChild(this.getLoadingSvg())
         if (this.displayControls) {
             this.setControlsColor(this.controlsColor)
         }
