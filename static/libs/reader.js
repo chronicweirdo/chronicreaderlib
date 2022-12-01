@@ -969,6 +969,7 @@ class ColorMap {
 }
 
 class DisplayTools {
+    static LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
     static getNextSvg() {
         const ns = "http://www.w3.org/2000/svg"
         let svg = document.createElementNS(ns, "svg")
@@ -981,7 +982,6 @@ class DisplayTools {
         svg.style.top = "45%"
         svg.style.left = "40%"
         let path = document.createElementNS(ns, "path")
-        path.setAttribute("id", "nextbutton")
         path.setAttribute("d", "M 2 2 L 8 20 L 2 38")
         path.setAttribute("stroke-width", "3")
         path.setAttribute("stroke-linecap", "round")
@@ -1002,7 +1002,6 @@ class DisplayTools {
         svg.style.top = "45%"
         svg.style.left = "40%"
         let path = document.createElementNS(ns, "path")
-        path.setAttribute("id", "nextbutton")
         path.setAttribute("d", "M 8 2 L 2 20 L 8 38")
         path.setAttribute("stroke-width", "3")
         path.setAttribute("stroke-linecap", "round")
@@ -1023,12 +1022,66 @@ class DisplayTools {
         svg.style.top = "45%"
         svg.style.left = "10%"
         let path = document.createElementNS(ns, "path")
-        path.setAttribute("id", "nextbutton")
         path.setAttribute("d", "M 2 8 L 20 2 L 38 8")
         path.setAttribute("stroke-width", "3")
         path.setAttribute("stroke-linecap", "round")
         path.setAttribute("fill", "none")
         svg.appendChild(path)
+        return svg
+    }
+
+    static getLoadingSvg() {
+        const ns = "http://www.w3.org/2000/svg"
+        let svg = document.createElementNS(ns, "svg")
+        svg.setAttribute("viewBox", "-5 -5 110 110")
+        //svg.setAttribute("width", 40)
+        //svg.setAttribute("height", 10)
+        svg.style.position = "absolute"
+        svg.style.width = "10%"
+        svg.style.height = "10%"
+        svg.style.top = "45%"
+        svg.style.left = "45%"
+        let path = document.createElementNS(ns, "path")
+        path.setAttribute("d", "M 50 50 m -50, 0 a 50,50 0 1,0 100,0 a 50,50 0 1,0 -100,0")
+        path.setAttribute("stroke-width", "10")
+        path.setAttribute("stroke-linecap", "round")
+        path.setAttribute("fill", "none")
+        svg.appendChild(path)
+        /*
+        .path {
+            stroke-dasharray: 320;
+            stroke-dashoffset: 0;
+            animation: dash 2s linear infinite;
+        }
+  
+        @keyframes dash {
+            from {
+                stroke-dashoffset: 640;
+            }
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+        */
+        path.style.strokeDasharray = 320
+        path.style.strokeDashoffset = 0
+        path.style.animation = "loadinganimation 2s linear infinite"
+        if (!document.getElementById(DisplayTools.LOADING_ANIMATION_STYLE_ID)) {
+            var animationStyle = document.createElement('style')
+            animationStyle.id = DisplayTools.LOADING_ANIMATION_STYLE_ID
+            animationStyle.innerHTML = "\
+                @keyframes loadinganimation {\
+                    from {\
+                        stroke-dashoffset: 640;\
+                    }\
+                    to {\
+                        stroke-dashoffset: 0;\
+                    }\
+                }\
+            "
+            document.body.appendChild(animationStyle)
+        }
+        
         return svg
     }
 }
@@ -1074,6 +1127,7 @@ class ComicDisplay {
         this.next.style.stroke = color
         if (this.toolsLeft) this.toolsLeft.style.stroke = color
         if (this.toolsRight) this.toolsRight.style.stroke = color
+        this.loading.style.stroke = color
     }
 
     #buildUI() {
@@ -1110,9 +1164,7 @@ class ComicDisplay {
                 
             }
         }
-        if (this.displayControls) {
-            this.setControlsColor(this.controlsColor)
-        }
+        
         this.gestureControls = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
 
         let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
@@ -1139,9 +1191,13 @@ class ComicDisplay {
             (x, y) => this.#zoomJump(x, y), 
             mouseGestureScroll
         )
-        this.loading = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffffff")
-        this.loading.innerHTML = "Loading..."
-        this.loading.style.display = "none"
+        this.loading = createDivElement(this.element, leftMarginPercent + "%", 0, (100 - 2 * leftMarginPercent) + "%", "100%", "#ffffff00")
+        //this.loading.innerHTML = "Loading..."
+        this.loading.appendChild(DisplayTools.getLoadingSvg())
+        //this.loading.style.display = "none"
+        if (this.displayControls) {
+            this.setControlsColor(this.controlsColor)
+        }
 
         window.onresize = () => {
             executeWithDelay(() => { this.#update() }, 500)
@@ -1874,6 +1930,7 @@ class EbookDisplay {
         this.next.style.stroke = color
         if (this.toolsLeft) this.toolsLeft.style.stroke = color
         if (this.toolsRight) this.toolsRight.style.stroke = color
+        this.loading.style.stroke = color
     }
 
     #buildUI() {
@@ -1906,9 +1963,6 @@ class EbookDisplay {
                 this.toolsRight.appendChild(DisplayTools.getToolsSvg())
             }
         }
-        if (this.displayControls) {
-            this.setControlsColor(this.controlsColor)
-        }
         this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff00")
         this.page.style.fontSize = this.textSize + "em"
 
@@ -1930,8 +1984,12 @@ class EbookDisplay {
             this.#buildToolsUI(leftMarginPercent, topMarginPercent)
         }
         this.loading = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
-        this.loading.innerHTML = "Loading..."
-        this.loading.style.display = "none"
+        //this.loading.innerHTML = "Loading..."
+        //this.loading.style.display = "none"
+        this.loading.appendChild(DisplayTools.getLoadingSvg())
+        if (this.displayControls) {
+            this.setControlsColor(this.controlsColor)
+        }
 
         window.onresize = () => {
             executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
