@@ -274,13 +274,18 @@ class EbookNode {
             let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
             let imageElement = imageDocument.getElementsByTagName(this.name)[0]
             let imagePath = imageElement.getAttribute("src")
-            let base64 = await ebook.getImageBase64(filename, imagePath)
-            imageElement.setAttribute("src", base64)
-            this.content = imageElement.outerHTML
-        } else if (this.children.length > 0) {
+            try {
+                let base64 = await ebook.getImageBase64(filename, imagePath)
+                imageElement.setAttribute("src", base64)
+                this.content = imageElement.outerHTML
+            } catch (error) {
+                console.error("failed to load image base64: " + error)
+            }
+        }
+        if (this.children.length > 0) {
             for (var i = 0; i < this.children.length; i++) {
                 var child = this.children[i]
-                child.#updateImages(filename, ebook)
+                await child.#updateImages(filename, ebook)
             }
         }
     }
@@ -1651,7 +1656,18 @@ class EbookWrapper {
 
     computeAbsolutePath(contextFolder, filename) {
         if (contextFolder != null && contextFolder.length > 0) {
-            return contextFolder + "/" + filename
+            let contextFolderPathComponents = contextFolder.split("/")
+            let filenamePathComponents = filename.split("/")
+            let completePathComponents = contextFolderPathComponents.concat(filenamePathComponents)
+            let resultPath = []
+            for (let i = 0; i < completePathComponents.length; i++) {
+                if (completePathComponents[i] == "..") {
+                    resultPath.pop()
+                } else {
+                    resultPath.push(completePathComponents[i])
+                }
+            }
+            return resultPath.join("/")
         } else {
             return filename
         }
@@ -1720,7 +1736,8 @@ class EbookWrapper {
     
 
     async getImageBase64(contextFile, fileName) {
-        return "data:" + getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)))
+        let absolutePath = this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)
+        return "data:" + getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(absolutePath))
     }
 
     async getPositionForLink(contextFile, link) {
@@ -1734,8 +1751,10 @@ class EbookWrapper {
         let nodes = await this.getNodes()
         if (nodes) {
             let node = nodes[absoluteLink]
-            let position = node.getIdPosition(id)
-            return position
+            if (node) {
+                let position = node.getIdPosition(id)
+                return position
+            }
         }
         return null
     }
@@ -1760,7 +1779,8 @@ class EbookWrapper {
             let node = nodeResult.node
             if (node.start <= start && start <= node.end) {
                 let actualEnd = (end > node.end) ? node.end : end
-                return node.copy(start, actualEnd).getContent()
+                let resultNode = node.copy(start, actualEnd)
+                return resultNode.getContent()
             }
         }
         return null
@@ -1781,6 +1801,7 @@ class EbookWrapper {
 }
 
 class EbookDisplay extends Display {
+    EBOOK_PAGE_STYLE_ID = "ebookPageStyle"
     constructor(element, book, settings = {}) {
         super(element, book, settings)
         this.#buildUI()
@@ -1828,7 +1849,6 @@ class EbookDisplay extends Display {
             this.displayPageForCallback = settings.displayPageForCallback
         }
         if (settings.showTools != undefined) {
-            console.log("setting show tools to " + settings.showTools)
             this.showTools = settings.showTools
         } else {
             this.showTools = true
@@ -1925,13 +1945,28 @@ class EbookDisplay extends Display {
                 this.toolsRight.appendChild(this.getToolsSvg())
             }
         }
+
+        if (!document.getElementById(this.EBOOK_PAGE_STYLE_ID)) {
+            var ebookPageStyle = document.createElement('style')
+            ebookPageStyle.id = this.EBOOK_PAGE_STYLE_ID
+            ebookPageStyle.innerHTML = "\
+                .ebookPage img, .ebookPage image {\
+                    max-width: 100%;\
+                    max-height: 100%;\
+                }\
+            "
+            document.body.appendChild(ebookPageStyle)
+        }
+
         this.page = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff00")
+        this.page.classList.add("ebookPage")
         this.page.style.fontSize = this.textSize + "em"
 
         //const [sheet] = window.document.styleSheets;
         //sheet.insertRule('h1, h2, h3, h4, h5, h6 { color: red; }', sheet.cssRules.length)
         
         this.shadowPage = createDivElement(this.element, leftMarginPercent + "%", topMarginPercent + "%", (100 - 2 * leftMarginPercent) + "%", (100 - 2 * topMarginPercent) + "%", "#ffffff")
+        this.shadowPage.classList.add("ebookPage")
         this.shadowPage.style.fontSize = this.textSize + "em"
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
@@ -2086,10 +2121,25 @@ class EbookDisplay extends Display {
         }
     }
     
-    async #overflowTriggerred() {
+    #overflowTriggerred() {
         let el = this.shadowElement
-        if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) return true
-        else return false
+        return new Promise((resolve, reject) => {
+            var images = el.getElementsByTagName('img')
+            var imageCount = images.length
+            if (imageCount > 0) {
+                let imagePromises = []
+                for (var i = 0; i < imageCount; i++) {
+                    imagePromises.push(imageLoadedPromise(images[i]))
+                }
+                Promise.all(imagePromises).then(() => {
+                    if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) resolve(true)
+                    else resolve(false)
+                })
+            } else {
+                if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) resolve(true)
+                else resolve(false)
+            }
+        })
     }
 
     async #computeMaximalPage(start) {
@@ -2101,6 +2151,12 @@ class EbookDisplay extends Display {
             end = await this.book.findSpaceAfter(previousEnd)
             this.shadowElement.innerHTML = await this.book.getContentsAt(start, end)
         }
+        /*let imgs = this.shadowElement.getElementsByTagName("img")
+        let srcs = []
+        for (let i = 0; i < imgs.length; i++) {
+            srcs.push(imgs[i].getAttribute("src"))
+        }*/
+        //console.log("srcs: " + srcs)
         if (previousEnd != null) {
             return new Page(start, previousEnd)
         } else {
