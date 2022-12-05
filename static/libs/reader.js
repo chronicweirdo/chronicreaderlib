@@ -824,12 +824,15 @@ class ComicWrapper {
     }
 
     async getCover() {
-        if (await this.getSize() > 0) {
-            let files = await this.archive.getFiles()
-            return await this.archive.getBase64FileContents(files[0])
-        } else {
-            return null
+        if (this.cover == undefined) {
+            if (await this.getSize() > 0) {
+                let files = await this.archive.getFiles()
+                this.cover = await this.archive.getBase64FileContents(files[0])
+            } else {
+                this.cover = null
+            }
         }
+        return this.cover
     }
 
     async getContentsAt(position) {
@@ -1765,49 +1768,27 @@ class EbookWrapper {
     }
 
     async getCover() {
-        // get opf
-        let opf = await this.#getOpf()
-        let opfFile = opf.name
-        let opfContents = opf.contents
-        let documentNode = await EbookNode.parseXmlToEbookNode(opfContents)
-        let metadataNodes = documentNode.findChildrenWithTag("metadata", true) 
-        console.log(metadataNodes)
-        if (metadataNodes.length == 1) {
-            let metadataNode = metadataNodes[0]
-            let metaNodes = metadataNode.findChildrenWithTag("meta")
-            console.log(metaNodes)
-            let coverMeta = metaNodes.find((node) => node.attributes && node.attributes["name"] == "cover")
-            console.log(coverMeta)
-            if (coverMeta) {
-                let manifestNode = documentNode.findChildrenWithTag("manifest", true).pop()//.find(() => true)
-                console.log(manifestNode)
-                if (manifestNode) {
-                    let coverItem = manifestNode.findChildrenWithTag("item").find(item => item.attributes["id"] == coverMeta.attributes["content"])
-                    console.log(coverItem)
-                    if (coverItem) {
-                        let href = coverItem.attributes["href"]
-                        console.log(href)
-                        //let absoluteCoverPath = this.computeAbsolutePath(this.getContextFolder(opfFile), href)
-                        //console.log(absoluteCoverPath)
-                        let coverBase64 = await this.getImageBase64(opfFile, href)
-                        console.log(coverBase64)
-                        return coverBase64
-                    }
-                }
+        if (this.cover == undefined) {
+            try {
+                // get opf
+                let opf = await this.#getOpf()
+                let opfFile = opf.name
+                let opfContents = opf.contents
+                let documentNode = await EbookNode.parseXmlToEbookNode(opfContents)
+                let metadataNode = documentNode.findChildrenWithTag("metadata", true).pop()
+                let metaNodes = metadataNode.findChildrenWithTag("meta")
+                let coverMeta = metaNodes.find((node) => node.attributes && node.attributes["name"] == "cover")
+                let manifestNode = documentNode.findChildrenWithTag("manifest", true).pop()
+                let coverItem = manifestNode.findChildrenWithTag("item").find(item => item.attributes["id"] == coverMeta.attributes["content"])
+                let href = coverItem.attributes["href"]
+                let coverBase64 = await this.getImageBase64(opfFile, href)
+                this.cover = coverBase64
+            } catch (error) {
+                console.log(error)
+                this.cover = null
             }
         }
-        // find cover resource id from meta: <meta content="my-cover-image" name="cover"/>
-        
-        // find cover resource href: <item href="images/cover.jpg" id="my-cover-image" media-type="image/jpeg" properties="cover-image"/>
-        // get cover bytes
-
-        /*if (await this.getSize() > 0) {
-            let files = await this.archive.getFiles()
-            return await this.archive.getBase64FileContents(files[0])
-        } else {
-            return null
-        }*/
-        return null
+        return this.cover
     }
 
     getContextFolder(contextFile) {
@@ -2192,7 +2173,6 @@ class EbookDisplay extends Display {
         increaseTextSizeButton.onclick = () => this.#increaseTextSize()
         toolsContents.appendChild(increaseTextSizeButton)
         let coverBase64 = await this.book.getCover()
-        console.log(coverBase64)
         if (coverBase64) {
             let coverElement = document.createElement("img")
             coverElement.src = coverBase64
@@ -2200,9 +2180,7 @@ class EbookDisplay extends Display {
         }
 
         this.tools.innerHTML = ""
-        this.tools.appendChild(toolsContents)
-
-        
+        this.tools.appendChild(toolsContents)        
     }
 
     async fixLinks(contextFilename) {
