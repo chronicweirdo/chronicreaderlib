@@ -106,7 +106,7 @@ zip wrapper:
 */
 
 class EbookNode {
-    static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak", "!--"]
+    static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak", "meta", "item", "?xml"]
     static LEAF_ELEMENTS = ["img", "tr", "image"]
 
     constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
@@ -116,13 +116,125 @@ class EbookNode {
         this.children = children
         this.start = start
         this.end = end
-        this.#parseId()
+        if (name != "text") {
+            try {
+                this.attributes = EbookNode.#parseAttributes(content)
+            } catch (error) {
+                console.log(error)
+            }
+        }
+        //this.#parseId()
+    }
+
+    static #parseAttributes(content) {
+        let attributes = []
+        let accumulator = ""
+        let lookingForAttributeName = false
+        let readingAttributeName = false
+        let lookingForAttributeValue = false
+        let readingAttributeValue = false
+        let attributeValueQuotes = null
+        let attributeName = null
+        let attributeValue = null
+        for (var i = 0; i < content.length; i++) {
+            let c = content.charAt(i)
+            accumulator += c
+            if (c == ' ' || c == '\t') {
+                if (lookingForAttributeName) {
+                    // discard and continue looking
+                    accumulator = ""
+                } else if (readingAttributeName) {
+                    // finished reading attribute name
+                    readingAttributeName = false
+                    lookingForAttributeValue = true
+                    attributeName = accumulator.substring(0, accumulator.length - 1)
+                    accumulator = ""
+                } else if (lookingForAttributeValue) {
+                    // continue looking, space is not a value
+                } else if (readingAttributeValue) {
+                    // continue reading
+                } else {
+                    // discard
+                    accumulator = ""
+                    lookingForAttributeName = true
+                }
+            } else if (c == '=') {
+                if (readingAttributeName) {
+                    // finished reading attribute name
+                    readingAttributeName = false
+                    lookingForAttributeValue = true
+                    attributeName = accumulator.substring(0, accumulator.length - 1)
+                    accumulator = ""
+                } else if (lookingForAttributeValue) {
+                    // we are on the right track, but we keep looking
+                } else {
+                    // error
+                    throw "wild = discovered at position " + i + " in: " + content
+                }
+            } else if (c == attributeValueQuotes) {
+                if (readingAttributeValue) {
+                    // may be end of attribute value read unless escaped
+                    if (accumulator.charAt(accumulator.length - 2) != '\\') {
+                        // finish reading attribute value and save attribute
+                        readingAttributeValue = false
+                        lookingForAttributeValue = false
+                        readingAttributeName = false
+                        lookingForAttributeName = true
+                        attributeValue = accumulator.substring(0, accumulator.length - 1)
+                        accumulator = ""
+                        attributes.push({
+                            "name": attributeName,
+                            "value": attributeValue
+                        })
+                        attributeName = null
+                        attributeValue = null
+                        attributeValueQuotes = null
+                    }
+                } else {
+                    throw "wild ending " + attributeValueQuotes + " discovered at position " + i + " in: " + content
+                }
+            } else if (c == '"' || c == "'") {
+                if (lookingForAttributeValue) {
+                    // start reading attribute value
+                    lookingForAttributeValue = false
+                    readingAttributeValue = true
+                    attributeValueQuotes = c
+                    accumulator = ""
+                } if (readingAttributeValue) {
+                    // continue
+                } else {
+                    throw "wild " + c + " discovered at position " + i + " in: " + content
+                }
+            } else {
+                if (lookingForAttributeName) {
+                    lookingForAttributeName = false
+                    readingAttributeName = true
+                } else if (lookingForAttributeValue) {
+                    // not going to find a value, starting with a new name
+                    readingAttributeValue = false
+                    lookingForAttributeValue = false
+                    readingAttributeName = false
+                    lookingForAttributeName = true
+                    attributeValue = null
+                    accumulator = ""
+                    attributes.push({
+                        "name": attributeName,
+                        "value": attributeValue
+                    })
+                    attributeName = null
+                    attributeValue = null
+                    attributeValueQuotes = null
+                }
+                // continue
+            }
+        }
+        return attributes
     }
 
     static #isVoidElement(tagName) {
-        return EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
+        return tagName.startsWith("!--") || EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
     }
-      
+
     static #shouldBeLeafElement(tagName) {
         return EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
     }
@@ -156,6 +268,10 @@ class EbookNode {
         return null
     }
 
+    static parseXmlToEbookNode(xml) {
+        return EbookNode.#parseBody(xml, null, null, null)
+    }
+
     static #getHtmlBody(html) {
         var bodyStartPattern = /<body[^>]*>/
         var bodyStartMatch = bodyStartPattern.exec(html)
@@ -172,13 +288,13 @@ class EbookNode {
         }
     }
 
-    #parseId() {
+    /*#parseId() {
         let idMatch = this.content.match(/id="([^"]+)"/)
 
         if (idMatch && idMatch[1] && idMatch[1].length > 0) {
             this.id = idMatch[1]
         }
-    }
+    }*/
 
     static async #parseBody(body, entrancePosition, filename, ebook) {
         var bodyNode = new EbookNode("body", "")
@@ -258,9 +374,13 @@ class EbookNode {
             }
         }
 
-        bodyNode.#collapseLeaves()
-        bodyNode.#updatePositions(entrancePosition)
-        await bodyNode.#updateImages(filename, ebook)
+        if (entrancePosition != null) {
+            bodyNode.#collapseLeaves()
+            bodyNode.#updatePositions(entrancePosition)
+        }
+        if (filename != null && ebook != null) {
+            await bodyNode.#updateImages(filename, ebook)
+        }
         return bodyNode
     }
 
@@ -299,7 +419,7 @@ class EbookNode {
 
     // find position of the id, if it exists
     getIdPosition(id) {
-        if (this.id && this.id != null && this.id == id) {
+        if (this.attributes && this.attributes.id && this.attributes.id != null && this.attributes.id == id) {
             return this.start
         }
         if (this.children.length > 0) {
@@ -1643,6 +1763,27 @@ class EbookWrapper {
             'name': ncxFile,
             'contents': await this.archive.getTextFileContents(ncxFile)
         }
+    }
+
+    async getCover() {
+        // get opf
+        let opf = await this.#getOpf()
+        let opfFile = opf.name
+        let opfContents = opf.contents
+        let documentNode = await EbookNode.parseXmlToEbookNode(opfContents)
+        console.log(documentNode)
+        // find cover resource id from meta: <meta content="my-cover-image" name="cover"/>
+        
+        // find cover resource href: <item href="images/cover.jpg" id="my-cover-image" media-type="image/jpeg" properties="cover-image"/>
+        // get cover bytes
+
+        /*if (await this.getSize() > 0) {
+            let files = await this.archive.getFiles()
+            return await this.archive.getBase64FileContents(files[0])
+        } else {
+            return null
+        }*/
+        return null
     }
 
     getContextFolder(contextFile) {

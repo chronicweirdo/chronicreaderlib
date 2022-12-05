@@ -8,9 +8,9 @@
     <script>
         var urls = ["/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub", "/books/Feature_Comics_111.cbz"];
         var positions = [0, 10]
-        var index = 1;
+        var index = 0;
         var book;
-        var bookDisplay;
+        var reader;
         function negative(col) {
             return [255 - col[0], 255 - col[1], 255 - col[2]]
         }
@@ -30,7 +30,7 @@
 
         function displayBook() {
             console.log(urls[index])
-            let reader = new ChronicReader(
+            reader = new ChronicReader(
                 urls[index], 
                 document.getElementById("page"),
                 {
@@ -50,7 +50,7 @@
             displayBook()
         }
         window.addEventListener('resize', function() {
-            bookDisplay.refresh()
+            reader.refresh()
         }, true)
     </script>
     <style>
@@ -66,6 +66,10 @@
             left: 10%;
             /*background-color: #cc9999;*/
             overflow: hidden;
+        }
+        .ebookPage img, .ebookPage image {
+            max-width: 100%;
+            max-height: 100%;
         }
     </style>
 </head>
