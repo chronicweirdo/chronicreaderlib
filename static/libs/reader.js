@@ -127,7 +127,7 @@ class EbookNode {
     }
 
     static #parseAttributes(content) {
-        let attributes = []
+        let attributes = {}
         let accumulator = ""
         let lookingForAttributeName = false
         let readingAttributeName = false
@@ -182,10 +182,7 @@ class EbookNode {
                         lookingForAttributeName = true
                         attributeValue = accumulator.substring(0, accumulator.length - 1)
                         accumulator = ""
-                        attributes.push({
-                            "name": attributeName,
-                            "value": attributeValue
-                        })
+                        attributes[attributeName] = attributeValue
                         attributeName = null
                         attributeValue = null
                         attributeValueQuotes = null
@@ -217,10 +214,7 @@ class EbookNode {
                     lookingForAttributeName = true
                     attributeValue = null
                     accumulator = ""
-                    attributes.push({
-                        "name": attributeName,
-                        "value": attributeValue
-                    })
+                    attributes[attributeName] = attributeValue
                     attributeName = null
                     attributeValue = null
                     attributeValueQuotes = null
@@ -287,14 +281,6 @@ class EbookNode {
           return null
         }
     }
-
-    /*#parseId() {
-        let idMatch = this.content.match(/id="([^"]+)"/)
-
-        if (idMatch && idMatch[1] && idMatch[1].length > 0) {
-            this.id = idMatch[1]
-        }
-    }*/
 
     static async #parseBody(body, entrancePosition, filename, ebook) {
         var bodyNode = new EbookNode("body", "")
@@ -760,6 +746,19 @@ class EbookNode {
         } else {
             return []
         }
+    }
+
+    findChildrenWithTag(tagName, deep = true) {
+        let result = []
+        for (let i = 0; i < this.children.length; i++) {
+            if (this.children[i].name == tagName) {
+                result.push(this.children[i])
+            }
+            if (deep) {
+                result = result.concat(this.children[i].findChildrenWithTag(tagName, deep))
+            }
+        }
+        return result
     }
 }
 
@@ -1771,7 +1770,32 @@ class EbookWrapper {
         let opfFile = opf.name
         let opfContents = opf.contents
         let documentNode = await EbookNode.parseXmlToEbookNode(opfContents)
-        console.log(documentNode)
+        let metadataNodes = documentNode.findChildrenWithTag("metadata", true) 
+        console.log(metadataNodes)
+        if (metadataNodes.length == 1) {
+            let metadataNode = metadataNodes[0]
+            let metaNodes = metadataNode.findChildrenWithTag("meta")
+            console.log(metaNodes)
+            let coverMeta = metaNodes.find((node) => node.attributes && node.attributes["name"] == "cover")
+            console.log(coverMeta)
+            if (coverMeta) {
+                let manifestNode = documentNode.findChildrenWithTag("manifest", true).pop()//.find(() => true)
+                console.log(manifestNode)
+                if (manifestNode) {
+                    let coverItem = manifestNode.findChildrenWithTag("item").find(item => item.attributes["id"] == coverMeta.attributes["content"])
+                    console.log(coverItem)
+                    if (coverItem) {
+                        let href = coverItem.attributes["href"]
+                        console.log(href)
+                        //let absoluteCoverPath = this.computeAbsolutePath(this.getContextFolder(opfFile), href)
+                        //console.log(absoluteCoverPath)
+                        let coverBase64 = await this.getImageBase64(opfFile, href)
+                        console.log(coverBase64)
+                        return coverBase64
+                    }
+                }
+            }
+        }
         // find cover resource id from meta: <meta content="my-cover-image" name="cover"/>
         
         // find cover resource href: <item href="images/cover.jpg" id="my-cover-image" media-type="image/jpeg" properties="cover-image"/>
@@ -2167,8 +2191,18 @@ class EbookDisplay extends Display {
         increaseTextSizeButton.innerHTML = "increase text size"
         increaseTextSizeButton.onclick = () => this.#increaseTextSize()
         toolsContents.appendChild(increaseTextSizeButton)
+        let coverBase64 = await this.book.getCover()
+        console.log(coverBase64)
+        if (coverBase64) {
+            let coverElement = document.createElement("img")
+            coverElement.src = coverBase64
+            toolsContents.appendChild(coverElement)
+        }
+
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)
+
+        
     }
 
     async fixLinks(contextFilename) {
