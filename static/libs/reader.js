@@ -377,18 +377,19 @@ class EbookNode {
             bodyNode.#collapseLeaves()
             bodyNode.#updatePositions(entrancePosition)
         }
-        if (filename != null && ebook != null) {
+        /*if (filename != null && ebook != null) {
+            console.log("updating images")
             await bodyNode.#updateImages(filename, ebook)
-        }
+        }*/
         return bodyNode
     }
 
-    static #isImage(tagName) {
+    /*static #isImage(tagName) {
         return tagName.toLowerCase() == "img"
-    }
+    }*/
     // go through structure and replace src of images with base64 from archive
-    async #updateImages(filename, ebook) {
-        if (EbookNode.#isImage(this.name)) {
+    /*async #updateImages(filename, ebook) {
+        if (this.name.toLowerCase == "img") {
             let parser = new DOMParser()
             let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
             let imageElement = imageDocument.getElementsByTagName(this.name)[0]
@@ -400,6 +401,18 @@ class EbookNode {
             } catch (error) {
                 console.error("failed to load image base64: " + error)
             }
+        } else if (this.name.toLowerCase == "image") {
+            let parser = new DOMParser()
+            let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
+            let imageElement = imageDocument.getElementsByTagName(this.name)[0]
+            let imagePath = imageElement.getAttribute("xlink:href")
+            try {
+                let base64 = await ebook.getImageBase64(filename, imagePath)
+                imageElement.setAttribute("xlink:href", base64)
+                this.content = imageElement.outerHTML
+            } catch (error) {
+                console.error("failed to load image base64: " + error)
+            }
         }
         if (this.children.length > 0) {
             for (var i = 0; i < this.children.length; i++) {
@@ -407,7 +420,7 @@ class EbookNode {
                 await child.#updateImages(filename, ebook)
             }
         }
-    }
+    }*/
 
     static #isLink(tagName) {
         return tagName.toLowerCase() == "a"
@@ -2199,8 +2212,8 @@ class EbookDisplay extends Display {
         this.tools.appendChild(toolsContents)        
     }
 
-    async fixLinks(contextFilename) {
-        let links = this.page.getElementsByTagName("a")
+    async fixLinks(element, contextFilename) {
+        let links = element.getElementsByTagName("a")
         for (let i = 0; i < links.length; i++) {
             let linkElement = links[i]
             let linkHref = linkElement.getAttribute("href")
@@ -2214,16 +2227,52 @@ class EbookDisplay extends Display {
         }
     }
 
+    async fixImages(element, contextFilename) {
+        let imgs = element.getElementsByTagName("img")
+        for (let i = 0; i < imgs.length; i++) {
+            let imgElement = imgs[i]
+            let imgSrc = imgElement.getAttribute("src")
+            console.log(imgSrc)
+            if (imgSrc != null && imgSrc.length > 0) {
+                imgElement.setAttribute("src", await this.book.getImageBase64(contextFilename, imgSrc))
+            }
+        }
+
+        let images = element.getElementsByTagName("image")
+        for (let i = 0; i < images.length; i++) {
+            let imgElement = images[i]
+            let imgSrc = imgElement.getAttribute("xlink:href")
+            console.log(imgSrc)
+            if (imgSrc != null && imgSrc.length > 0) {
+                imgElement.setAttribute("xlink:href", await this.book.getImageBase64(contextFilename, imgSrc))
+            }
+        }
+    }
+
+    async #getBookContentsWithImagesAt(start, end) {
+        let temp = document.createElement("div")
+        temp.innerHTML = await this.book.getContentsAt(start, end)
+        let node = await this.book.getNodeAt(start)
+        await this.fixImages(temp, node.key)
+        return temp.innerHTML
+    }
+
     async displayPageFor(position) {
         this.#showLoading() // todo: show loading delayed, so it's not triggerred when no computation time
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
             this.position = this.currentPage.start
-            this.page.innerHTML = await this.book.getContentsAt(page.start, page.end)
-            this.#hideLoading()
+            //let temp = document.createElement("div")
+            //temp.innerHTML = await this.book.getContentsAt(page.start, page.end)
             let node = await this.book.getNodeAt(page.start)
-            this.fixLinks(node.key)
+            
+            //await this.fixImages(temp, node.key)
+            this.page.innerHTML = await this.#getBookContentsWithImagesAt(page.start, page.end)//temp.innerHTML
+            // links need to be fixed on the actual final element
+            // because an onclick event is configured on them
+            await this.fixLinks(this.page, node.key)
+            this.#hideLoading()
             await this.#timeout(10)
             if (this.displayPageForCallback) {
                 this.displayPageForCallback(this)
@@ -2318,7 +2367,7 @@ class EbookDisplay extends Display {
         while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
             previousEnd = end
             end = await this.book.findSpaceAfter(previousEnd)
-            this.shadowElement.innerHTML = await this.book.getContentsAt(start, end)
+            this.shadowElement.innerHTML = await this.#getBookContentsWithImagesAt(start, end) //this.book.getContentsAt(start, end)
         }
         /*let imgs = this.shadowElement.getElementsByTagName("img")
         let srcs = []
