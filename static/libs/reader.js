@@ -167,6 +167,8 @@ class EbookNode {
                     accumulator = ""
                 } else if (lookingForAttributeValue) {
                     // we are on the right track, but we keep looking
+                } else if (readingAttributeValue) {
+                    // all fine, continue reading
                 } else {
                     // error
                     throw "wild = discovered at position " + i + " in: " + content
@@ -241,8 +243,9 @@ class EbookNode {
         return /^<\/[^>]+>$/.exec(str) != null
     }
         
-    static #isBothTag(str) {
-        return /^<[^>\/]+\/>$/.exec(str) != null
+    static isBothTag(str) {
+        //return /^<[^>\/]+\/>$/.exec(str) != null
+        return str.startsWith("<!--") || (str.startsWith("<") && str.endsWith("/>"))
     }
       
     static #getTagName(str) {
@@ -282,6 +285,13 @@ class EbookNode {
         }
     }
 
+    static #reversePrint(node) {
+        if (node.parent) {
+            this.#reversePrint(node.parent)
+        }
+        console.log(node)
+    }
+
     static async #parseBody(body, entrancePosition, filename, ebook) {
         var bodyNode = new EbookNode("body", "")
         var current = bodyNode
@@ -315,23 +325,26 @@ class EbookNode {
                     // can only be a tag
                     if (EbookNode.#isEndTag(content)) {
                         // we check that this tag closes the current node correctly
-                        if (EbookNode.#isVoidElement(name)) {
+                        /*if (EbookNode.#isVoidElement(name)) {
                             // the last child should have the correct name
                             var lastChild = current.children[current.children.length - 1]
                             if (name != lastChild.name) {
+                                console.log(content)
+                                this.#reversePrint(current)
                                 throw "incompatible end " + name + " for void tag " + lastChild.name
                             } else {
                                 lastChild.content += content
                             }
-                        } else {
+                        } else {*/
                             // the current node should have the correct name, and it is getting closed
                             if (name != current.name) {
+                                this.#reversePrint(current)
                                 throw "incompatible end tag " + name + " for " + current.name
                             }
                             // move current node up
                             current = current.parent
-                        }
-                    } else if (EbookNode.#isBothTag(content) || EbookNode.#isVoidElement(name)) {
+                        /*}*/
+                    } else if (EbookNode.isBothTag(content) /*&& EbookNode.#isVoidElement(name)*/) {
                         // just add this tag without content
                         current.#addChild(new EbookNode(name, content))
                     } else {
@@ -1770,15 +1783,18 @@ class EbookWrapper {
     async getCover() {
         if (this.cover == undefined) {
             try {
-                // get opf
                 let opf = await this.#getOpf()
                 let opfFile = opf.name
                 let opfContents = opf.contents
                 let documentNode = await EbookNode.parseXmlToEbookNode(opfContents)
+                if (! documentNode) throw "failed to parse opf xml"
                 let metadataNode = documentNode.findChildrenWithTag("metadata", true).pop()
+                if (! metadataNode) throw "failed to find metadata node"
                 let metaNodes = metadataNode.findChildrenWithTag("meta")
                 let coverMeta = metaNodes.find((node) => node.attributes && node.attributes["name"] == "cover")
+                if (! coverMeta) throw "failed to find cover meta entry"
                 let manifestNode = documentNode.findChildrenWithTag("manifest", true).pop()
+                if (! manifestNode) throw "failed to find manifest node"
                 let coverItem = manifestNode.findChildrenWithTag("item").find(item => item.attributes["id"] == coverMeta.attributes["content"])
                 let href = coverItem.attributes["href"]
                 let coverBase64 = await this.getImageBase64(opfFile, href)
