@@ -30,6 +30,17 @@ function imageLoadedPromise(image) {
         image.onerror = imageResolveFunction
     })
 }
+function waitForImagesToLoad(images) {
+    return new Promise((resolve, reject) => {
+        let imagePromises = []
+        for (var i = 0; i < images.length; i++) {
+            imagePromises.push(imageLoadedPromise(images[i]))
+        }
+        Promise.all(imagePromises).then(() => {
+            resolve()
+        })
+    })
+}
 function getFileExtension(filename) {
     let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
     return extension
@@ -107,7 +118,7 @@ zip wrapper:
 
 class EbookNode {
     static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak", "meta", "item", "?xml"]
-    static LEAF_ELEMENTS = ["img", "tr", "image"]
+    static LEAF_ELEMENTS = ["img", "tr", "image", "svg"]
 
     constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
         this.name = name
@@ -2343,13 +2354,8 @@ class EbookDisplay extends Display {
         let el = this.shadowElement
         return new Promise((resolve, reject) => {
             var images = el.getElementsByTagName('img')
-            var imageCount = images.length
-            if (imageCount > 0) {
-                let imagePromises = []
-                for (var i = 0; i < imageCount; i++) {
-                    imagePromises.push(imageLoadedPromise(images[i]))
-                }
-                Promise.all(imagePromises).then(() => {
+            if (images.length > 0) {
+                waitForImagesToLoad(images).then(() => {
                     if (el.scrollHeight > el.offsetHeight || el.scrollWidth > el.offsetWidth) resolve(true)
                     else resolve(false)
                 })
