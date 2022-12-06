@@ -861,16 +861,7 @@ class ZipWrapper {
     }
 }
 
-/*
-comic wrapper
-- contains a zip or a rar wrapper
-- get size
-- get title
-- get cover
-- get contents for position(s)
-*/
-
-class ComicWrapper {
+class BookWrapper {
     constructor(archive) {
         this.archive = archive
     }
@@ -880,15 +871,50 @@ class ComicWrapper {
     }
 
     async getSize() {
+        return 0
+    }
+
+    async getCover() {
+        return null
+    }
+
+    async getContentsAt(position) {
+        return null
+    }
+
+    async getToc() {
+        return []
+    }
+}
+
+/*
+comic wrapper
+- contains a zip or a rar wrapper
+- get size
+- get title
+- get cover
+- get contents for position(s)
+*/
+
+class ComicWrapper extends BookWrapper {
+    constructor(archive) {
+        super(archive)
+    }
+
+    /*getUrl() {
+        return this.archive.getUrl()
+    }*/
+
+    async getSize() {
         let files = await this.archive.getFiles()
         return files.length
     }
 
     async getCover() {
         if (this.cover == undefined) {
+            console.log("loading comic cover")
             if (await this.getSize() > 0) {
-                let files = await this.archive.getFiles()
-                this.cover = await this.archive.getBase64FileContents(files[0])
+                this.cover = await this.getContentsAt(0)
             } else {
                 this.cover = null
             }
@@ -1162,9 +1188,75 @@ class Display {
     constructor(element, settings) {
         this.element = element
         this.configure(settings)
+        this.buildUi()
+    }
+
+    setBook(book) {
+        this.book = book
+        if (this.showTools) {
+            this.buildToolsUi()
+        }
     }
 
     configure(settings) {
+        if (settings.position != undefined) {
+            this.position = settings.position
+        } else {
+            this.position = 0
+        }
+        if (settings.leftMarginPercent != undefined) {
+            this.leftMarginPercent = settings.leftMarginPercent
+        } else {
+            this.leftMarginPercent = 10
+        }
+        if (settings.topMarginPercent != undefined) {
+            this.topMarginPercent = settings.topMarginPercent
+        } else {
+            this.topMarginPercent = 5
+        }
+        if (settings.toolsButtonPercent != undefined) {
+            this.toolsButtonPercent = settings.toolsButtonPercent
+        } else {
+            this.toolsButtonPercent = 10
+        }
+        /*if (settings.initialTextSize != undefined) {
+            this.textSize = settings.initialTextSize
+        } else {
+            this.textSize = 1
+        }
+        if (settings.maximumTextSize != undefined) {
+            this.maximumTextSize = settings.maximumTextSize
+        } else {
+            this.maximumTextSize = 2
+        }
+        if (settings.minimumTextSize != undefined) {
+            this.minimumTextSize = settings.minimumTextSize
+        } else {
+            this.minimumTextSize = 0.5
+        }
+        if (settings.textSizeStep != undefined) {
+            this.textSizeStep = settings.textSizeStep
+        } else {
+            this.textSizeStep = 0.1
+        }*/
+        if (settings.displayControls != undefined) {
+            this.displayControls = settings.displayControls
+        } else {
+            this.displayControls = true
+        }
+        if (settings.controlsColor != undefined) {
+            this.controlsColor = settings.controlsColor
+        } else {
+            this.controlsColor = "#000000aa"
+        }
+        if (settings.displayPageForCallback != undefined) {
+            this.displayPageForCallback = settings.displayPageForCallback
+        }
+        if (settings.showTools != undefined) {
+            this.showTools = settings.showTools
+        } else {
+            this.showTools = true
+        }
     }
 
     createSvg(topX, topY, bottomX, bottomY, left, top, width, height) {
@@ -1234,27 +1326,146 @@ class Display {
         
         return svg
     }
+
+    async goToNextView() {
+
+    }
+
+    async goToPreviousView() {
+
+    }
+
+    // or decrease text size
+    async zoomOut() {
+
+    }
+
+    // or increase text size
+    async zoomIn() {
+
+    }
+
+    buildUi() {
+        if (this.showTools == false) {
+            this.toolsButtonPercent = 0
+        }
+       
+        this.element.innerHTML = ""
+        this.page = document.createElement("img")
+        this.page.style.position = "absolute"
+        this.element.appendChild(this.page)
+        this.previous = createDivElement(this.element, 0, 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#ff000000")
+        if (this.displayControls) {
+            this.previous.appendChild(this.getPreviousSvg())
+        }
+        this.previous.onclick = () => { this.goToPreviousView() }
+        this.next = createDivElement(this.element, (100-this.leftMarginPercent) + "%", 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#00ff0000")
+        if (this.displayControls) {
+            this.next.appendChild(this.getNextSvg())
+        }
+        this.next.onclick = () => { this.goToNextView() }
+        if (this.showTools) {
+            this.toolsLeft = createDivElement(this.element, 0, (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#ff00ff00")
+            if (this.displayControls) {
+                this.toolsLeft.appendChild(this.getToolsSvg())
+            }
+            this.toolsRight = createDivElement(this.element, (100-this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#00ffff00")
+            if (this.displayControls) {
+                this.toolsRight.append(this.getToolsSvg())
+            }
+        }
+        
+        if (this.showTools) {
+            this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
+            this.tools.style.display = "none"
+            this.tools.style.overflow = "scroll"
+            this.tools.style.zIndex = 1000
+            this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
+            this.toolsRight.onclick = () => {this.tools.style.display = "block"}
+            this.tools.onclick = () => {this.tools.style.display = "none"}
+        }
+        this.loading = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
+        this.loading.appendChild(this.getLoadingSvg())
+        if (this.displayControls) {
+            this.setControlsColor(this.controlsColor)
+        }
+    }
+
+    async buildToolsUi() {
+        let toolsContents = document.createElement("div")
+        toolsContents.classList.add("ebookPage")
+        toolsContents.style.position = "absolute"
+        toolsContents.style.top = this.topMarginPercent + "%"
+        toolsContents.style.left = this.leftMarginPercent + "%"
+        toolsContents.style.width = (100 - 2 * this.leftMarginPercent) + "%"
+
+        let coverBase64 = await this.book.getCover()
+        if (coverBase64) {
+            let coverElement = document.createElement("img")
+            coverElement.src = coverBase64
+            toolsContents.appendChild(coverElement)
+        }
+        
+        let buildTocListFunction = (node) => {
+            let item = document.createElement("li")
+            let link = document.createElement("a")
+            link.innerHTML = node.name
+            link.onclick = () => this.displayPageFor(node.position)
+            item.appendChild(link)
+            if (node.children && node.children.length > 0) {
+                let sublist = document.createElement("ul")
+                for (let i = 0; i < node.children.length; i++) {
+                    let sublistItem = buildTocListFunction(node.children[i])
+                    sublist.appendChild(sublistItem)
+                }
+                item.appendChild(sublist)
+            }
+            return item
+        }
+        let toc = await this.book.getToc()
+        if (toc.length > 0) {
+            let tocList = document.createElement("ul")
+            for (let i = 0; i < toc.length; i++) {
+                let item = buildTocListFunction(toc[i])
+                tocList.appendChild(item)
+            }
+            toolsContents.appendChild(tocList)
+        }
+        let decreaseTextSizeButton = document.createElement("a")
+        decreaseTextSizeButton.innerHTML = "zoom out"
+        decreaseTextSizeButton.onclick = () => this.zoomOut()
+        toolsContents.appendChild(decreaseTextSizeButton)
+        let increaseTextSizeButton = document.createElement("a")
+        increaseTextSizeButton.innerHTML = "zoomIn"
+        increaseTextSizeButton.onclick = () => this.zoomIn()
+        toolsContents.appendChild(increaseTextSizeButton)
+        
+
+        this.tools.innerHTML = ""
+        this.tools.appendChild(toolsContents)        
+    }
 }
 
 class ComicDisplay extends Display {
     constructor(element, settings) {
         super(element, settings)
         this.zoomValue = 1
-        if (settings.position) {
+        /*if (settings.position) {
             this.position = settings.position
         } else {
             this.position = 0
-        }
-        this.#buildUI()
+        }*/
+        //this.#buildUI()
         this.#showLoading()
     }
 
     setBook(book) {
-        this.book = book
+        super.setBook(book)
         this.displayPageFor(this.position).then(() => this.#fitPageToScreen())
     }
 
-    configure(settings) {
+    /*configure(settings) {
+        super.configure(settings)
         if (settings.leftMarginPercent != undefined) {
             this.leftMarginPercent = settings.leftMarginPercent
         } else {
@@ -1288,7 +1499,7 @@ class ComicDisplay extends Display {
         } else {
             this.showTools = false
         }
-    }
+    }*/
 
     setControlsColor(color) {
         this.previous.style.stroke = color
@@ -1298,10 +1509,42 @@ class ComicDisplay extends Display {
         this.loading.style.stroke = color
     }
 
-    #buildUI() {
-        /*const leftMarginPercent = 10
-        const topMarginPercent = 5
-        var toolsButtonPercent = 10*/
+    buildUi() {
+        super.buildUi()
+
+        this.gestureControls = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
+
+        let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
+            var zoomDelta = 1 + scrollValue * this.#getScrollSpeed() * (this.#getInvertScroll() ? 1 : -1)
+            var newZoom = this.#getZoom() * zoomDelta
+            this.#zoom(newZoom, scrollCenterX, scrollCenterY, true)
+        }
+        let getZoomFunction = () => {
+            return this.#getZoom()
+        }
+        let zoomFunction = (val, cx, cy, withUpdate) => {
+            this.#zoom(val, cx, cy, withUpdate)
+        }
+        let panFunction = (x, y, totalDeltaX, totalDeltaY, pinching) => {
+            this.#pan(x, y, totalDeltaX, totalDeltaY, pinching)
+        }
+        new Gestures(
+            this.gestureControls, 
+            () => this.#resetPan(), 
+            getZoomFunction, 
+            zoomFunction, 
+            panFunction, 
+            null, 
+            (x, y) => this.#zoomJump(x, y), 
+            mouseGestureScroll
+        )
+
+        window.onresize = () => {
+            executeWithDelay(() => { this.#update() }, 500)
+        }
+    }
+    /*#buildUI() {
+
         if (this.showTools == false) {
             this.toolsButtonPercent = 0
         }
@@ -1370,7 +1613,7 @@ class ComicDisplay extends Display {
         window.onresize = () => {
             executeWithDelay(() => { this.#update() }, 500)
         }
-    }
+    }*/
 
     #showLoading() {
         this.loading.style.display = "block"
@@ -1425,7 +1668,7 @@ class ComicDisplay extends Display {
     #getVerticalJump() {
         return 0.5
     }
-    #goToNextView() {
+    async goToNextView() {
         if (this.#isEndOfRow()) {
             if (this.#isEndOfColumn()) {
                 this.nextPage()
@@ -1479,7 +1722,7 @@ class ComicDisplay extends Display {
         this.#setLeft(lastLeft)
         this.#setTop(lastTop)
     }
-    #goToPreviousView() {
+    async goToPreviousView() {
         if (this.#isBeginningOfRow()) {
             if (this.#isBeginningOfColumn()) {
                 this.previousPage()
@@ -1547,12 +1790,12 @@ class ComicDisplay extends Display {
             if (verticalMoveValid && totalDeltaX < -horizontalThreshold && this.swipeNextPossible) {
                 this.swipeNextPossible = false
                 this.swipePreviousPossible = false
-                this.#goToNextView()
+                this.goToNextView()
                 return true
             } else if (verticalMoveValid && totalDeltaX > horizontalThreshold && this.swipePreviousPossible) {
                 this.swipeNextPossible = false
                 this.swipePreviousPossible = false
-                this.#goToPreviousView()
+                this.goToPreviousView()
                 return true
             } else {
                 this.#addLeft(x)
@@ -1790,14 +2033,14 @@ ebook wrapper
 - get contents for resource path as text or bytes
 */
 
-class EbookWrapper {
+class EbookWrapper extends BookWrapper {
     constructor(archive) {
-        this.archive = archive
+        super(archive)
     }
 
-    getUrl() {
+    /*getUrl() {
         return this.archive.getUrl()
-    }
+    }*/
 
     async getNodes() {
         if (this.nodes == undefined) {
@@ -2007,8 +2250,6 @@ class EbookWrapper {
         return bookNode
     }
 
-    
-
     async getImageBase64(contextFile, fileName) {
         let absolutePath = this.computeAbsolutePath(this.getContextFolder(contextFile), fileName)
         return "data:" + getFileMimeType(fileName) + ";base64," + (await this.archive.getBase64FileContents(absolutePath))
@@ -2153,7 +2394,7 @@ class EbookDisplay extends Display {
     EBOOK_PAGE_STYLE_ID = "ebookPageStyle"
     constructor(element, settings = {}) {
         super(element, settings)
-        this.#buildUI()
+        //this.#buildUI()
         /*let startPosition = 0
         if (settings.position) {
             startPosition = settings.position
@@ -2162,17 +2403,15 @@ class EbookDisplay extends Display {
     }
 
     setBook(book) {
-        this.book = book
-        if (this.showTools) {
-            this.#buildToolsUI(this.leftMarginPercent, this.topMarginPercent)
-        }
+        super.setBook(book)
         this.displayPageFor(this.position).then(() => {
             this.triggerComputationForAllPages()
         })
     }
 
     configure(settings) {
-        if (settings.position != undefined) {
+        super.configure(settings)
+        /*if (settings.position != undefined) {
             this.position = settings.position
         } else {
             this.position = 0
@@ -2191,7 +2430,7 @@ class EbookDisplay extends Display {
             this.toolsButtonPercent = settings.toolsButtonPercent
         } else {
             this.toolsButtonPercent = 10
-        }
+        }*/
         if (settings.initialTextSize != undefined) {
             this.textSize = settings.initialTextSize
         } else {
@@ -2212,7 +2451,7 @@ class EbookDisplay extends Display {
         } else {
             this.textSizeStep = 0.1
         }
-        if (settings.displayControls != undefined) {
+        /*if (settings.displayControls != undefined) {
             this.displayControls = settings.displayControls
         } else {
             this.displayControls = true
@@ -2229,7 +2468,7 @@ class EbookDisplay extends Display {
             this.showTools = settings.showTools
         } else {
             this.showTools = true
-        }
+        }*/
     }
 
     async #delayedRefresh(timestamp) {
@@ -2267,7 +2506,7 @@ class EbookDisplay extends Display {
         this.displayPageFor(this.currentPage.start)
     }
 
-    #increaseTextSize() {
+    zoomIn() {
         let currentTextSize = this.textSize
         let newTextSize = currentTextSize + this.textSizeStep
         if (newTextSize > this.maximumTextSize) {
@@ -2276,7 +2515,7 @@ class EbookDisplay extends Display {
         this.#setTextSize(newTextSize)
     }
 
-    #decreaseTextSize() {
+    zoomOut() {
         let currentTextSize = this.textSize
         let newTextSize = currentTextSize - this.textSizeStep
         if (newTextSize < this.minimumTextSize) {
@@ -2293,16 +2532,12 @@ class EbookDisplay extends Display {
         this.loading.style.stroke = color
     }
 
-    #buildUI() {
-        /*const leftMarginPercent = 10
-        const topMarginPercent = 5
-        var toolsButtonPercent = 10*/
-        if (this.showTools == false) {
+    buildUi() {
+        super.buildUi()
+        /*if (this.showTools == false) {
             toolsButtonPercent = 0
         }
-        //this.element.style.position = "fixed"
         this.element.innerHTML = ""
-        // function createDivElement(parent, left, top, width, height, color) {
         this.previous = createDivElement(this.element, 0, 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#ff000000")
         if (this.displayControls) {
             this.previous.appendChild(this.getPreviousSvg())
@@ -2322,7 +2557,7 @@ class EbookDisplay extends Display {
             if (this.displayControls) {
                 this.toolsRight.appendChild(this.getToolsSvg())
             }
-        }
+        }*/
 
         if (!document.getElementById(this.EBOOK_PAGE_STYLE_ID)) {
             var ebookPageStyle = document.createElement('style')
@@ -2339,9 +2574,6 @@ class EbookDisplay extends Display {
         this.page = createDivElement(this.element, this.leftMarginPercent + "%", this.topMarginPercent + "%", (100 - 2 * this.leftMarginPercent) + "%", (100 - 2 * this.topMarginPercent) + "%", "#ffffff00")
         this.page.classList.add("ebookPage")
         this.page.style.fontSize = this.textSize + "em"
-
-        //const [sheet] = window.document.styleSheets;
-        //sheet.insertRule('h1, h2, h3, h4, h5, h6 { color: red; }', sheet.cssRules.length)
         
         this.shadowPage = createDivElement(this.element, this.leftMarginPercent + "%", this.topMarginPercent + "%", (100 - 2 * this.leftMarginPercent) + "%", (100 - 2 * this.topMarginPercent) + "%", "#ffffff")
         this.shadowPage.classList.add("ebookPage")
@@ -2349,7 +2581,8 @@ class EbookDisplay extends Display {
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
-        if (this.showTools) {
+
+        /*if (this.showTools) {
             this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
             this.tools.style.display = "none"
             this.tools.style.overflow = "scroll"
@@ -2358,12 +2591,10 @@ class EbookDisplay extends Display {
             this.tools.onclick = () => {this.tools.style.display = "none"}
         }
         this.loading = createDivElement(this.element, this.leftMarginPercent + "%", this.topMarginPercent + "%", (100 - 2 * this.leftMarginPercent) + "%", (100 - 2 * this.topMarginPercent) + "%", "#ffffff")
-        //this.loading.innerHTML = "Loading..."
-        //this.loading.style.display = "none"
         this.loading.appendChild(this.getLoadingSvg())
         if (this.displayControls) {
             this.setControlsColor(this.controlsColor)
-        }
+        }*/
 
         window.onresize = () => {
             executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
@@ -2378,7 +2609,7 @@ class EbookDisplay extends Display {
         this.loading.style.display = "none"
     }
 
-    async #buildToolsUI(leftMarginPercent, topMarginPercent) {
+    /*async #buildToolsUI(leftMarginPercent, topMarginPercent) {
         let toolsContents = document.createElement("div")
         toolsContents.classList.add("ebookPage")
         toolsContents.style.position = "absolute"
@@ -2410,12 +2641,14 @@ class EbookDisplay extends Display {
             return item
         }
         let toc = await this.book.getToc()
-        let tocList = document.createElement("ul")
-        for (let i = 0; i < toc.length; i++) {
-            let item = buildTocListFunction(toc[i])
-            tocList.appendChild(item)
+        if (toc.length > 0) {
+            let tocList = document.createElement("ul")
+            for (let i = 0; i < toc.length; i++) {
+                let item = buildTocListFunction(toc[i])
+                tocList.appendChild(item)
+            }
+            toolsContents.appendChild(tocList)
         }
-        toolsContents.appendChild(tocList)
         let decreaseTextSizeButton = document.createElement("a")
         decreaseTextSizeButton.innerHTML = "decrease text size"
         decreaseTextSizeButton.onclick = () => this.#decreaseTextSize()
@@ -2428,7 +2661,7 @@ class EbookDisplay extends Display {
 
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        
-    }
+    }*/
 
     async fixLinks(element, contextFilename) {
         let links = element.getElementsByTagName("a")
@@ -2466,14 +2699,14 @@ class EbookDisplay extends Display {
         return page
     }
 
-    async nextPage() {
+    async goToNextView() {
         let size = await this.book.getSize()
         if (this.currentPage && this.currentPage.end < size) {
             this.displayPageFor(this.currentPage.end + 1)
         }
     }
 
-    async previousPage() {
+    async goToPreviousView() {
         if (this.currentPage && this.currentPage.start > 0) {
             this.displayPageFor(this.currentPage.start - 1)
         }
