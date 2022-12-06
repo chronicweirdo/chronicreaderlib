@@ -30,6 +30,27 @@ function imageLoadedPromise(image) {
         image.onerror = imageResolveFunction
     })
 }
+
+function treeTransform(node, selectFunction, transformFunction, childrenSelectFunction) {
+    if (selectFunction(node)) {
+        let result = transformFunction(node)
+        let children = childrenSelectFunction(node)
+        let resultChildren = []
+        for (let i = 0; i < children.length; i++) {
+            let childResult = treeTransform(children[i], selectFunction, transformFunction, childrenSelectFunction)
+            if (childResult != null) {
+                resultChildren.push(childResult)
+            }
+        }
+        if (resultChildren.length > 0) {
+            result.children = resultChildren
+        }
+        return result
+    } else {
+        return null
+    }
+}
+
 function waitForImagesToLoad(images) {
     return new Promise((resolve, reject) => {
         let imagePromises = []
@@ -127,7 +148,7 @@ class EbookNode {
         this.children = children
         this.start = start
         this.end = end
-        if (this.name != "text") {
+        if (this.name != null) {
             try {
                 this.attributes = EbookNode.#parseAttributes(this.content)
             } catch (error) {
@@ -239,11 +260,11 @@ class EbookNode {
     }
 
     static #isVoidElement(tagName) {
-        return tagName.startsWith("!--") || EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
+        return tagName != null && tagName.startsWith("!--") || EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
     }
 
     static #shouldBeLeafElement(tagName) {
-        return EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
+        return tagName != null && EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
     }
 
     static #isTag(str) {
@@ -256,7 +277,9 @@ class EbookNode {
         
     static isBothTag(str) {
         //return /^<[^>\/]+\/>$/.exec(str) != null
-        return str.startsWith("<!--") || (str.startsWith("<") && str.endsWith("/>"))
+        return str.startsWith("<!--") 
+            || (str.startsWith("<") && str.endsWith("/>"))
+            || (str.startsWith("<?xml") && str.endsWith("?>"))
     }
       
     static #getTagName(str) {
@@ -313,7 +336,7 @@ class EbookNode {
                 } else {
                     // can only be a text node or nothing
                     if (content.length > 0) {
-                        current.#addChild(new EbookNode("text", content))
+                        current.#addChild(new EbookNode(null, content))
                         content = ""
                     }
                 }
@@ -369,7 +392,7 @@ class EbookNode {
             } else {
                 // can only be a text node or nothing
                 if (content.length > 0) {
-                    current.#addChild(new EbookNode("text", content))
+                    current.#addChild(new EbookNode(null, content))
                 }
             }
         }
@@ -471,7 +494,7 @@ class EbookNode {
     #updatePositions(entrancePosition = 0) {
         var position = entrancePosition
         this.start = position
-        if (this.name == "text") {
+        if (this.name == null) {
             this.end = this.start + this.content.length - 1
         } else if (EbookNode.#shouldBeLeafElement(this.name)) {
             // occupies a single position
@@ -503,7 +526,7 @@ class EbookNode {
     }
 
     getContent() {
-        if (this.name == "text") {
+        if (this.name == null) {
             return this.content
         } else if (this.name == "body") {
             var result = ""
@@ -525,7 +548,7 @@ class EbookNode {
 
     setContent(newContent) {
         this.content = newContent
-        if (this.name != "text") {
+        if (this.name != null) {
             try {
                 this.attributes = EbookNode.#parseAttributes(this.content)
             } catch (error) {
@@ -656,7 +679,7 @@ class EbookNode {
             // we need to look in the next node
             leaf = leaf.#nextLeaf()
         }
-        if (leaf != null && leaf.name == "text") {
+        if (leaf != null && leaf.name == null) {
             var searchStartPosition = (position - leaf.start + 1 > 0) ? position - leaf.start + 1 : 0
             var m = spacePattern.exec(leaf.content.substring(searchStartPosition))
             if (m != null) {
@@ -670,7 +693,7 @@ class EbookNode {
     findSpaceBefore(position) {
         var spacePattern = /\s[^\s]*$/
         var leaf = this.#leafAtPosition(position)
-        if (leaf != null && leaf.name == "text") {
+        if (leaf != null && leaf.name == null) {
             var searchText = leaf.content.substring(0, position - leaf.start)
             var m = spacePattern.exec(searchText)
             if (m != null) {
@@ -685,10 +708,10 @@ class EbookNode {
     }
 
     copy(from, to) {
-        if (this.name == "text") {
+        if (this.name == null) {
             if (from <= this.start && this.end <= to) {
                 // this node is copied whole
-                return new EbookNode("text", this.content, null, [], this.start, this.end)
+                return new EbookNode(null, this.content, null, [], this.start, this.end)
             } else if (from <= this.start && this.start <= to && to<= this.end) {
                 // copy ends at this node
                 return new EbookNode(this.name, this.content.substring(0, to - this.start + 1), null, [], this.start, to)
@@ -1894,12 +1917,60 @@ class EbookWrapper {
     async parseNcx() {
         let ncx = await this.#getNcx()
         let ncxXmlText = ncx.contents
-        let parser = new DOMParser()
-        let xmlDoc = parser.parseFromString(ncxXmlText, "text/xml")
+        //let parser = new DOMParser()
+        //let xmlDoc = parser.parseFromString(ncxXmlText, "text/xml")
+        let xmlNode = await EbookNode.parseXmlToEbookNode(ncxXmlText)
+        console.log(xmlNode)
 
-        let navPoints = Array.from(xmlDoc.getElementsByTagName("navPoint"))
+        let navMapNode = xmlNode.findChildrenWithTag("navMap", true).pop()
+        //let navPoints = Array.from(xmlDoc.getElementsByTagName("navPoint"))
+
+        let transformNavNodeFunction = async (node) => {
+            if (node.name == "navPoint") {
+                let name = node.findChildrenWithTag("navLabel").pop().findChildrenWithTag("text").pop().findChildrenWithTag(null).pop().getContent()
+                let link = node.findChildrenWithTag("content").pop().attributes["src"]
+                let position = await this.getPositionForLink(ncx.name, link)
+                let result = {
+                    "name": name,
+                    "position": position
+                }
+                let resultChildren = []
+                let nodeChildren = node.findChildrenWithTag("navPoint")
+                for (let i = 0; i < nodeChildren.length; i++) {
+                    let childResult = await transformNavNodeFunction(nodeChildren[i])
+                    if (childResult != null) {
+                        resultChildren.push(childResult)
+                    }
+                }
+                if (resultChildren.length > 0) {
+                    result.children = resultChildren
+                }
+                return result
+            } else {
+                return null
+            }
+        }
+
+        let rootNavPoints = navMapNode.findChildrenWithTag("navPoint")
         let toc = []
-        for (let i = 0; i < navPoints.length; i++) {
+        for (let i = 0; i < rootNavPoints.length; i++) {
+            let rootTocEntry = await transformNavNodeFunction(rootNavPoints[i])
+            if (rootTocEntry != null) {
+                toc.push(rootTocEntry)
+            }
+        }
+        //console.log(toc)
+        /*let toc = treeTransform(
+            navMapNode, 
+            (node) => node.name == "navPoint", 
+            (node) => {
+                let name = node.findChildrenWithTag("navLabel").pop().findChildrenWithTag("text").pop().getContent()
+                let link = node.findChildrenWithTag("content").pop().attributes["src"]
+                let position = await this.getPositionForLink(n)
+            }, 
+            childrenSelectFunction
+        )*/
+        /*for (let i = 0; i < navPoints.length; i++) {
             let element = navPoints[i]
             let playOrder = element.getAttribute("playOrder")
             let name = element.getElementsByTagName("navLabel")[0].getElementsByTagName("text")[0].innerHTML
@@ -1911,7 +1982,7 @@ class EbookWrapper {
                 'order': playOrder,
                 'position': position
             })
-        }
+        }*/
         this.toc = toc
         return toc
     }
@@ -2308,22 +2379,43 @@ class EbookDisplay extends Display {
     }
 
     async #buildToolsUI(leftMarginPercent, topMarginPercent) {
-        let toc = await this.book.getToc()
         let toolsContents = document.createElement("div")
+        toolsContents.classList.add("ebookPage")
         toolsContents.style.position = "absolute"
         toolsContents.style.top = topMarginPercent + "%"
         toolsContents.style.left = leftMarginPercent + "%"
         toolsContents.style.width = (100 - 2 * leftMarginPercent) + "%"
-        let tocElement = document.createElement("ul")
-        for (let i = 0; i < toc.length; i++) {
+
+        let coverBase64 = await this.book.getCover()
+        if (coverBase64) {
+            let coverElement = document.createElement("img")
+            coverElement.src = coverBase64
+            toolsContents.appendChild(coverElement)
+        }
+        
+        let buildTocListFunction = (node) => {
             let item = document.createElement("li")
             let link = document.createElement("a")
-            link.innerHTML = toc[i].name
-            link.onclick = () => this.displayPageFor(toc[i].position)
+            link.innerHTML = node.name
+            link.onclick = () => this.displayPageFor(node.position)
             item.appendChild(link)
-            tocElement.appendChild(item)
+            if (node.children && node.children.length > 0) {
+                let sublist = document.createElement("ul")
+                for (let i = 0; i < node.children.length; i++) {
+                    let sublistItem = buildTocListFunction(node.children[i])
+                    sublist.appendChild(sublistItem)
+                }
+                item.appendChild(sublist)
+            }
+            return item
         }
-        toolsContents.appendChild(tocElement)
+        let toc = await this.book.getToc()
+        let tocList = document.createElement("ul")
+        for (let i = 0; i < toc.length; i++) {
+            let item = buildTocListFunction(toc[i])
+            tocList.appendChild(item)
+        }
+        toolsContents.appendChild(tocList)
         let decreaseTextSizeButton = document.createElement("a")
         decreaseTextSizeButton.innerHTML = "decrease text size"
         decreaseTextSizeButton.onclick = () => this.#decreaseTextSize()
@@ -2332,12 +2424,7 @@ class EbookDisplay extends Display {
         increaseTextSizeButton.innerHTML = "increase text size"
         increaseTextSizeButton.onclick = () => this.#increaseTextSize()
         toolsContents.appendChild(increaseTextSizeButton)
-        let coverBase64 = await this.book.getCover()
-        if (coverBase64) {
-            let coverElement = document.createElement("img")
-            coverElement.src = coverBase64
-            toolsContents.appendChild(coverElement)
-        }
+        
 
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        
