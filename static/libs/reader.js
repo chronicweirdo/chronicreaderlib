@@ -1189,6 +1189,7 @@ class Display {
         this.element = element
         this.configure(settings)
         this.buildUi()
+        this.showLoading()
     }
 
     setBook(book) {
@@ -1219,26 +1220,6 @@ class Display {
         } else {
             this.toolsButtonPercent = 10
         }
-        /*if (settings.initialTextSize != undefined) {
-            this.textSize = settings.initialTextSize
-        } else {
-            this.textSize = 1
-        }
-        if (settings.maximumTextSize != undefined) {
-            this.maximumTextSize = settings.maximumTextSize
-        } else {
-            this.maximumTextSize = 2
-        }
-        if (settings.minimumTextSize != undefined) {
-            this.minimumTextSize = settings.minimumTextSize
-        } else {
-            this.minimumTextSize = 0.5
-        }
-        if (settings.textSizeStep != undefined) {
-            this.textSizeStep = settings.textSizeStep
-        } else {
-            this.textSizeStep = 0.1
-        }*/
         if (settings.displayControls != undefined) {
             this.displayControls = settings.displayControls
         } else {
@@ -1440,9 +1421,16 @@ class Display {
         increaseTextSizeButton.onclick = () => this.zoomIn()
         toolsContents.appendChild(increaseTextSizeButton)
         
-
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        
+    }
+
+    showLoading() {
+        this.loading.style.display = "block"
+    }
+
+    hideLoading() {
+        this.loading.style.display = "none"
     }
 }
 
@@ -1450,13 +1438,7 @@ class ComicDisplay extends Display {
     constructor(element, settings) {
         super(element, settings)
         this.zoomValue = 1
-        /*if (settings.position) {
-            this.position = settings.position
-        } else {
-            this.position = 0
-        }*/
-        //this.#buildUI()
-        this.#showLoading()
+        //this.#showLoading()
     }
 
     setBook(book) {
@@ -1615,13 +1597,13 @@ class ComicDisplay extends Display {
         }
     }*/
 
-    #showLoading() {
+    /*#showLoading() {
         this.loading.style.display = "block"
     }
 
     #hideLoading() {
         this.loading.style.display = "none"
-    }
+    }*/
 
     #getScrollSpeed() {
         return 0.001
@@ -1862,12 +1844,12 @@ class ComicDisplay extends Display {
     }
 
     async displayPageFor(position) {
-        this.#showLoading()
+        this.showLoading()
         let pageContent = await this.#getPageFor(position)
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
         this.#computeImageDominantColor()
-        this.#hideLoading()
+        this.hideLoading()
         if (this.displayPageForCallback) {
             this.displayPageForCallback(this)
         }
@@ -2392,14 +2374,9 @@ class EbookWrapper extends BookWrapper {
 
 class EbookDisplay extends Display {
     EBOOK_PAGE_STYLE_ID = "ebookPageStyle"
+
     constructor(element, settings = {}) {
         super(element, settings)
-        //this.#buildUI()
-        /*let startPosition = 0
-        if (settings.position) {
-            startPosition = settings.position
-        }*/
-        this.#showLoading()
     }
 
     setBook(book) {
@@ -2601,13 +2578,13 @@ class EbookDisplay extends Display {
         }
     }
 
-    #showLoading() {
+    /*#showLoading() {
         this.loading.style.display = "block"
     }
 
     #hideLoading() {
         this.loading.style.display = "none"
-    }
+    }*/
 
     /*async #buildToolsUI(leftMarginPercent, topMarginPercent) {
         let toolsContents = document.createElement("div")
@@ -2679,7 +2656,7 @@ class EbookDisplay extends Display {
     }
 
     async displayPageFor(position) {
-        this.#showLoading() // todo: show loading delayed, so it's not triggerred when no computation time
+        this.showLoading() // todo: show loading delayed, so it's not triggerred when no computation time
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
@@ -2689,7 +2666,7 @@ class EbookDisplay extends Display {
             // links need to be fixed on the actual final element
             // because an onclick event is configured on them
             await this.fixLinks(this.page, node.key)
-            this.#hideLoading()
+            this.hideLoading()
             await this.#timeout(10)
             if (this.displayPageForCallback) {
                 this.displayPageForCallback(this)
