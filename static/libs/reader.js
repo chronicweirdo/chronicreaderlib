@@ -1929,20 +1929,44 @@ class EbookWrapper {
 
     async getPositionForLink(contextFile, link) {
         if (link == undefined || link == null) return null
-        let linkSplit = link.split("#")
-        let file = linkSplit.length == 2 ? linkSplit[0] : contextFile
-        let id = linkSplit.length == 2 ? linkSplit[1] : linkSplit[0]
 
-        let contextFolder = this.getContextFolder(contextFile)
-        let absoluteLink = this.computeAbsolutePath(contextFolder, file)
+        let file = null
+        let id = null
+        if (link.startsWith("http") || link.startsWith("www")) {
+            // an absolute link that we do not change
+            return null
+        } else if (link.startsWith('#')) {
+            // we have a reliative link, with the file equal to the context file
+            file = contextFile
+            id = link.substring(1)
+        } else if (link.indexOf('#') > 1) {
+            // we have both file and id
+            let linkSplit = link.split("#")
+            if (linkSplit.length != 2) return null
+            let contextFolder = this.getContextFolder(contextFile)
+            let absoluteLink = this.computeAbsolutePath(contextFolder, linkSplit[0])
+            file = absoluteLink
+            id = linkSplit[1]
+        } else {
+            // just a link to a file
+            let contextFolder = this.getContextFolder(contextFile)
+            let absoluteLink = this.computeAbsolutePath(contextFolder, link)
+            file = absoluteLink
+        }
+        
         let nodes = await this.getNodes()
         if (nodes) {
-            let node = nodes[absoluteLink]
+            let node = nodes[file]
             if (node) {
-                let position = node.getIdPosition(id)
-                return position
+                if (id) {
+                    let position = node.getIdPosition(id)
+                    return position
+                } else {
+                    return node.start
+                }
             }
         }
+
         return null
     }
 
