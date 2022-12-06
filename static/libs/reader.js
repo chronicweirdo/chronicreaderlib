@@ -901,10 +901,6 @@ class ComicWrapper extends BookWrapper {
         super(archive)
     }
 
-    /*getUrl() {
-        return this.archive.getUrl()
-    }*/
-
     async getSize() {
         let files = await this.archive.getFiles()
         return files.length
@@ -912,7 +908,6 @@ class ComicWrapper extends BookWrapper {
 
     async getCover() {
         if (this.cover == undefined) {
-            console.log("loading comic cover")
             if (await this.getSize() > 0) {
                 this.cover = await this.getContentsAt(0)
             } else {
@@ -920,6 +915,38 @@ class ComicWrapper extends BookWrapper {
             }
         }
         return this.cover
+    }
+
+    async getToc() {
+        let size = await this.getSize()
+        let magnitude = size.toString().length
+
+        let toc = []
+        if (magnitude >= 2) {
+            let miniToc = []
+            for (let i = 0; i < size; i++) {
+                miniToc.push({
+                    "name": "Page " + (i + 1),
+                    "position": i
+                })
+                if (i % 10 == 9 || i == size - 1) {
+                    toc.push({
+                        "name": "Pages " + (miniToc[0].position + 1) + " to " + (miniToc[miniToc.length - 1].position + 1),
+                        "position": miniToc[0].position,
+                        "children": miniToc
+                    })
+                    miniToc = []
+                }
+            }
+        } else {
+            for (let i = 0; i < size; i++) {
+                toc.push({
+                    "name": "Page " + (i + 1),
+                    "position": i
+                })
+            }
+        }
+        return toc
     }
 
     async getContentsAt(position) {
@@ -1729,6 +1756,7 @@ class ComicDisplay extends Display {
     async displayPageFor(position) {
         this.showLoading()
         let pageContent = await this.#getPageFor(position)
+        this.position = position
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
         this.#computeImageDominantColor()
@@ -1746,8 +1774,7 @@ class ComicDisplay extends Display {
     async nextPage() {
         let size = await this.book.getSize()
         if (this.position < size - 1) {
-            this.position = this.position + 1
-            this.displayPageFor(this.position).then(() => {
+            this.displayPageFor(this.position + 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -1759,8 +1786,7 @@ class ComicDisplay extends Display {
 
     async previousPage() {
         if (this.position > 0) {
-            this.position = this.position - 1
-            this.displayPageFor(this.position).then(() => {
+            this.displayPageFor(this.position - 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -2644,7 +2670,6 @@ class ChronicReader {
                 }
             }).then(wrapper => {
                 if (wrapper) {
-                    console.log("downloaded wrapper successfully")
                     this.display.setBook(wrapper)
                 }
             })
