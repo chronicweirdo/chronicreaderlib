@@ -127,9 +127,9 @@ class EbookNode {
         this.children = children
         this.start = start
         this.end = end
-        if (name != "text") {
+        if (this.name != "text") {
             try {
-                this.attributes = EbookNode.#parseAttributes(content)
+                this.attributes = EbookNode.#parseAttributes(this.content)
             } catch (error) {
                 console.log(error)
             }
@@ -296,13 +296,6 @@ class EbookNode {
         }
     }
 
-    static #reversePrint(node) {
-        if (node.parent) {
-            this.#reversePrint(node.parent)
-        }
-        console.log(node)
-    }
-
     static async #parseBody(body, entrancePosition, filename, ebook) {
         var bodyNode = new EbookNode("body", "")
         var current = bodyNode
@@ -340,8 +333,6 @@ class EbookNode {
                             // the last child should have the correct name
                             var lastChild = current.children[current.children.length - 1]
                             if (name != lastChild.name) {
-                                console.log(content)
-                                this.#reversePrint(current)
                                 throw "incompatible end " + name + " for void tag " + lastChild.name
                             } else {
                                 lastChild.content += content
@@ -349,7 +340,6 @@ class EbookNode {
                         } else {*/
                             // the current node should have the correct name, and it is getting closed
                             if (name != current.name) {
-                                this.#reversePrint(current)
                                 throw "incompatible end tag " + name + " for " + current.name
                             }
                             // move current node up
@@ -530,6 +520,17 @@ class EbookNode {
             }
             result += "</" + this.name + ">"
             return result
+        }
+    }
+
+    setContent(newContent) {
+        this.content = newContent
+        if (this.name != "text") {
+            try {
+                this.attributes = EbookNode.#parseAttributes(this.content)
+            } catch (error) {
+                console.log(error)
+            }
         }
     }
 
@@ -1966,10 +1967,61 @@ class EbookWrapper {
             if (node.start <= start && start <= node.end) {
                 let actualEnd = (end > node.end) ? node.end : end
                 let resultNode = node.copy(start, actualEnd)
+                await this.#fixImages(resultNode, nodeResult.key)
                 return resultNode.getContent()
             }
         }
         return null
+    }
+
+    async #fixImages(node, contextFilename) {
+        const srcRegex = /src=\"([^\"]+)\"/
+
+        let images = node.findChildrenWithTag("img")// element.getElementsByTagName("img")
+        for (let i = 0; i < images.length; i++) {
+            let image = images[i]
+            let imageContent = image.getContent()
+            let regexResult = srcRegex.exec(imageContent)
+            if (regexResult) {
+                let matchStart = regexResult.index
+                let matchEnd = regexResult.index + regexResult[0].length
+                let imgSrc = regexResult[1]
+                if (imgSrc != null && imgSrc.length > 0) {
+                    let newSrc = await this.getImageBase64(contextFilename, imgSrc)
+                    let newContent = imageContent.substring(0, matchStart) + 'src="' + newSrc + '"' + imageContent.substring(matchEnd)
+                    image.setContent(newContent)
+                }
+            }
+        }
+
+        const svgHrefRegex = /xlink:href=\"([^\"]+)\"/g
+        let svgs = node.findChildrenWithTag("svg")
+        for (let i = 0; i < svgs.length; i++) {
+            let svg = svgs[i]
+            let svgContent = svg.getContent()
+
+            let regexResults = [...svgContent.matchAll(svgHrefRegex)]
+            if (regexResults) {
+                let newContent = ""
+                let oldContentPosition = 0
+                for (let j = 0; j < regexResults.length; j++) {
+                    let regexResult = regexResults[j]
+                    let matchStart = regexResult.index
+                    let matchEnd = regexResult.index + regexResult[0].length
+                    let xlinkHref = regexResult[1]
+                    if (xlinkHref != null && xlinkHref.length > 0) {
+                        let newXlinkHref = await this.getImageBase64(contextFilename, xlinkHref)
+                        newContent += svgContent.substring(oldContentPosition, matchStart) + 'xlink:href="' + newXlinkHref + '"'
+                        oldContentPosition = matchEnd
+                    } else {
+                        newContent += svgContent.substring(oldContentPosition, matchEnd)
+                        oldContentPosition = matchEnd
+                    }
+                }
+                newContent += svgContent.substring(oldContentPosition)
+                svg.setContent(newContent)
+            }
+        }
     }
 
     async findSpaceAfter(position) {
@@ -2238,48 +2290,14 @@ class EbookDisplay extends Display {
         }
     }
 
-    async fixImages(element, contextFilename) {
-        let imgs = element.getElementsByTagName("img")
-        for (let i = 0; i < imgs.length; i++) {
-            let imgElement = imgs[i]
-            let imgSrc = imgElement.getAttribute("src")
-            console.log(imgSrc)
-            if (imgSrc != null && imgSrc.length > 0) {
-                imgElement.setAttribute("src", await this.book.getImageBase64(contextFilename, imgSrc))
-            }
-        }
-
-        let images = element.getElementsByTagName("image")
-        for (let i = 0; i < images.length; i++) {
-            let imgElement = images[i]
-            let imgSrc = imgElement.getAttribute("xlink:href")
-            console.log(imgSrc)
-            if (imgSrc != null && imgSrc.length > 0) {
-                imgElement.setAttribute("xlink:href", await this.book.getImageBase64(contextFilename, imgSrc))
-            }
-        }
-    }
-
-    async #getBookContentsWithImagesAt(start, end) {
-        let temp = document.createElement("div")
-        temp.innerHTML = await this.book.getContentsAt(start, end)
-        let node = await this.book.getNodeAt(start)
-        await this.fixImages(temp, node.key)
-        return temp.innerHTML
-    }
-
     async displayPageFor(position) {
         this.#showLoading() // todo: show loading delayed, so it's not triggerred when no computation time
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
             this.position = this.currentPage.start
-            //let temp = document.createElement("div")
-            //temp.innerHTML = await this.book.getContentsAt(page.start, page.end)
             let node = await this.book.getNodeAt(page.start)
-            
-            //await this.fixImages(temp, node.key)
-            this.page.innerHTML = await this.#getBookContentsWithImagesAt(page.start, page.end)//temp.innerHTML
+            this.page.innerHTML = await this.book.getContentsAt(page.start, page.end)
             // links need to be fixed on the actual final element
             // because an onclick event is configured on them
             await this.fixLinks(this.page, node.key)
@@ -2373,7 +2391,7 @@ class EbookDisplay extends Display {
         while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
             previousEnd = end
             end = await this.book.findSpaceAfter(previousEnd)
-            this.shadowElement.innerHTML = await this.#getBookContentsWithImagesAt(start, end) //this.book.getContentsAt(start, end)
+            this.shadowElement.innerHTML = await this.book.getContentsAt(start, end) //this.book.getContentsAt(start, end)
         }
         /*let imgs = this.shadowElement.getElementsByTagName("img")
         let srcs = []
