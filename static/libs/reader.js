@@ -1438,50 +1438,12 @@ class ComicDisplay extends Display {
     constructor(element, settings) {
         super(element, settings)
         this.zoomValue = 1
-        //this.#showLoading()
     }
 
     setBook(book) {
         super.setBook(book)
         this.displayPageFor(this.position).then(() => this.#fitPageToScreen())
     }
-
-    /*configure(settings) {
-        super.configure(settings)
-        if (settings.leftMarginPercent != undefined) {
-            this.leftMarginPercent = settings.leftMarginPercent
-        } else {
-            this.leftMarginPercent = 10
-        }
-        if (settings.topMarginPercent != undefined) {
-            this.topMarginPercent = settings.topMarginPercent
-        } else {
-            this.topMarginPercent = 5
-        }
-        if (settings.toolsButtonPercent != undefined) {
-            this.toolsButtonPercent = settings.toolsButtonPercent
-        } else {
-            this.toolsButtonPercent = 10
-        }
-        if (settings.displayControls != undefined) {
-            this.displayControls = settings.displayControls
-        } else {
-            this.displayControls = true
-        }
-        if (settings.controlsColor != undefined) {
-            this.controlsColor = settings.controlsColor
-        } else {
-            this.controlsColor = "#000000aa"
-        }
-        if (settings.displayPageForCallback != undefined) {
-            this.displayPageForCallback = settings.displayPageForCallback
-        }
-        if (settings.showTools != undefined) {
-            this.showTools = settings.showTools
-        } else {
-            this.showTools = false
-        }
-    }*/
 
     setControlsColor(color) {
         this.previous.style.stroke = color
@@ -1525,85 +1487,6 @@ class ComicDisplay extends Display {
             executeWithDelay(() => { this.#update() }, 500)
         }
     }
-    /*#buildUI() {
-
-        if (this.showTools == false) {
-            this.toolsButtonPercent = 0
-        }
-       
-        //this.element.style.position = "fixed"
-        this.element.innerHTML = ""
-        this.page = document.createElement("img")
-        this.page.style.position = "absolute"
-        this.element.appendChild(this.page)
-        this.previous = createDivElement(this.element, 0, 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#ff000000")
-        if (this.displayControls) {
-            this.previous.appendChild(this.getPreviousSvg())
-        }
-        this.previous.onclick = () => { this.#goToPreviousView() }
-        this.next = createDivElement(this.element, (100-this.leftMarginPercent) + "%", 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#00ff0000")
-        if (this.displayControls) {
-            this.next.appendChild(this.getNextSvg())
-        }
-        this.next.onclick = () => { this.#goToNextView() }
-        if (this.showTools) {
-            this.toolsLeft = createDivElement(this.element, 0, (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#ff00ff00")
-            if (this.displayControls) {
-                this.toolsLeft.appendChild(this.getToolsSvg())
-            }
-            this.toolsRight = createDivElement(this.element, (100-this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#00ffff00")
-            if (this.displayControls) {
-                this.toolsRight.append(this.getToolsSvg())
-                
-            }
-        }
-        
-        this.gestureControls = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
-
-        let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
-            var zoomDelta = 1 + scrollValue * this.#getScrollSpeed() * (this.#getInvertScroll() ? 1 : -1)
-            var newZoom = this.#getZoom() * zoomDelta
-            this.#zoom(newZoom, scrollCenterX, scrollCenterY, true)
-        }
-        let getZoomFunction = () => {
-            return this.#getZoom()
-        }
-        let zoomFunction = (val, cx, cy, withUpdate) => {
-            this.#zoom(val, cx, cy, withUpdate)
-        }
-        let panFunction = (x, y, totalDeltaX, totalDeltaY, pinching) => {
-            this.#pan(x, y, totalDeltaX, totalDeltaY, pinching)
-        }
-        new Gestures(
-            this.gestureControls, 
-            () => this.#resetPan(), 
-            getZoomFunction, 
-            zoomFunction, 
-            panFunction, 
-            null, 
-            (x, y) => this.#zoomJump(x, y), 
-            mouseGestureScroll
-        )
-        this.loading = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
-        //this.loading.innerHTML = "Loading..."
-        this.loading.appendChild(this.getLoadingSvg())
-        //this.loading.style.display = "none"
-        if (this.displayControls) {
-            this.setControlsColor(this.controlsColor)
-        }
-
-        window.onresize = () => {
-            executeWithDelay(() => { this.#update() }, 500)
-        }
-    }*/
-
-    /*#showLoading() {
-        this.loading.style.display = "block"
-    }
-
-    #hideLoading() {
-        this.loading.style.display = "none"
-    }*/
 
     #getScrollSpeed() {
         return 0.001
@@ -2020,10 +1903,6 @@ class EbookWrapper extends BookWrapper {
         super(archive)
     }
 
-    /*getUrl() {
-        return this.archive.getUrl()
-    }*/
-
     async getNodes() {
         if (this.nodes == undefined) {
             let spine = await this.getSpine()
@@ -2142,13 +2021,9 @@ class EbookWrapper extends BookWrapper {
     async parseNcx() {
         let ncx = await this.#getNcx()
         let ncxXmlText = ncx.contents
-        //let parser = new DOMParser()
-        //let xmlDoc = parser.parseFromString(ncxXmlText, "text/xml")
         let xmlNode = await EbookNode.parseXmlToEbookNode(ncxXmlText)
-        console.log(xmlNode)
 
         let navMapNode = xmlNode.findChildrenWithTag("navMap", true).pop()
-        //let navPoints = Array.from(xmlDoc.getElementsByTagName("navPoint"))
 
         let transformNavNodeFunction = async (node) => {
             if (node.name == "navPoint") {
@@ -2184,30 +2059,7 @@ class EbookWrapper extends BookWrapper {
                 toc.push(rootTocEntry)
             }
         }
-        //console.log(toc)
-        /*let toc = treeTransform(
-            navMapNode, 
-            (node) => node.name == "navPoint", 
-            (node) => {
-                let name = node.findChildrenWithTag("navLabel").pop().findChildrenWithTag("text").pop().getContent()
-                let link = node.findChildrenWithTag("content").pop().attributes["src"]
-                let position = await this.getPositionForLink(n)
-            }, 
-            childrenSelectFunction
-        )*/
-        /*for (let i = 0; i < navPoints.length; i++) {
-            let element = navPoints[i]
-            let playOrder = element.getAttribute("playOrder")
-            let name = element.getElementsByTagName("navLabel")[0].getElementsByTagName("text")[0].innerHTML
-            let content = element.getElementsByTagName("content")[0]
-            let contentSrc = content.getAttribute("src")
-            let position = await this.getPositionForLink(ncx.name, contentSrc)
-            toc.push({
-                'name': name,
-                'order': playOrder,
-                'position': position
-            })
-        }*/
+
         this.toc = toc
         return toc
     }
@@ -2388,26 +2240,7 @@ class EbookDisplay extends Display {
 
     configure(settings) {
         super.configure(settings)
-        /*if (settings.position != undefined) {
-            this.position = settings.position
-        } else {
-            this.position = 0
-        }
-        if (settings.leftMarginPercent != undefined) {
-            this.leftMarginPercent = settings.leftMarginPercent
-        } else {
-            this.leftMarginPercent = 10
-        }
-        if (settings.topMarginPercent != undefined) {
-            this.topMarginPercent = settings.topMarginPercent
-        } else {
-            this.topMarginPercent = 5
-        }
-        if (settings.toolsButtonPercent != undefined) {
-            this.toolsButtonPercent = settings.toolsButtonPercent
-        } else {
-            this.toolsButtonPercent = 10
-        }*/
+
         if (settings.initialTextSize != undefined) {
             this.textSize = settings.initialTextSize
         } else {
@@ -2428,24 +2261,6 @@ class EbookDisplay extends Display {
         } else {
             this.textSizeStep = 0.1
         }
-        /*if (settings.displayControls != undefined) {
-            this.displayControls = settings.displayControls
-        } else {
-            this.displayControls = true
-        }
-        if (settings.controlsColor != undefined) {
-            this.controlsColor = settings.controlsColor
-        } else {
-            this.controlsColor = "#000000aa"
-        }
-        if (settings.displayPageForCallback != undefined) {
-            this.displayPageForCallback = settings.displayPageForCallback
-        }
-        if (settings.showTools != undefined) {
-            this.showTools = settings.showTools
-        } else {
-            this.showTools = true
-        }*/
     }
 
     async #delayedRefresh(timestamp) {
@@ -2511,30 +2326,6 @@ class EbookDisplay extends Display {
 
     buildUi() {
         super.buildUi()
-        /*if (this.showTools == false) {
-            toolsButtonPercent = 0
-        }
-        this.element.innerHTML = ""
-        this.previous = createDivElement(this.element, 0, 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#ff000000")
-        if (this.displayControls) {
-            this.previous.appendChild(this.getPreviousSvg())
-        }
-        this.previous.onclick = () => { this.previousPage() }
-        this.next = createDivElement(this.element, (100-this.leftMarginPercent) + "%", 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#00ff0000")
-        if (this.displayControls) {
-            this.next.appendChild(this.getNextSvg())
-        }
-        this.next.onclick = () => { this.nextPage() }
-        if (this.showTools) {
-            this.toolsLeft = createDivElement(this.element, 0, (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#ff00ff00")
-            if (this.displayControls) {
-                this.toolsLeft.appendChild(this.getToolsSvg())
-            }
-            this.toolsRight = createDivElement(this.element, (100-this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#00ffff00")
-            if (this.displayControls) {
-                this.toolsRight.appendChild(this.getToolsSvg())
-            }
-        }*/
 
         if (!document.getElementById(this.EBOOK_PAGE_STYLE_ID)) {
             var ebookPageStyle = document.createElement('style')
@@ -2559,86 +2350,10 @@ class EbookDisplay extends Display {
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
 
-        /*if (this.showTools) {
-            this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
-            this.tools.style.display = "none"
-            this.tools.style.overflow = "scroll"
-            this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
-            this.toolsRight.onclick = () => {this.tools.style.display = "block"}
-            this.tools.onclick = () => {this.tools.style.display = "none"}
-        }
-        this.loading = createDivElement(this.element, this.leftMarginPercent + "%", this.topMarginPercent + "%", (100 - 2 * this.leftMarginPercent) + "%", (100 - 2 * this.topMarginPercent) + "%", "#ffffff")
-        this.loading.appendChild(this.getLoadingSvg())
-        if (this.displayControls) {
-            this.setControlsColor(this.controlsColor)
-        }*/
-
         window.onresize = () => {
             executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
         }
     }
-
-    /*#showLoading() {
-        this.loading.style.display = "block"
-    }
-
-    #hideLoading() {
-        this.loading.style.display = "none"
-    }*/
-
-    /*async #buildToolsUI(leftMarginPercent, topMarginPercent) {
-        let toolsContents = document.createElement("div")
-        toolsContents.classList.add("ebookPage")
-        toolsContents.style.position = "absolute"
-        toolsContents.style.top = topMarginPercent + "%"
-        toolsContents.style.left = leftMarginPercent + "%"
-        toolsContents.style.width = (100 - 2 * leftMarginPercent) + "%"
-
-        let coverBase64 = await this.book.getCover()
-        if (coverBase64) {
-            let coverElement = document.createElement("img")
-            coverElement.src = coverBase64
-            toolsContents.appendChild(coverElement)
-        }
-        
-        let buildTocListFunction = (node) => {
-            let item = document.createElement("li")
-            let link = document.createElement("a")
-            link.innerHTML = node.name
-            link.onclick = () => this.displayPageFor(node.position)
-            item.appendChild(link)
-            if (node.children && node.children.length > 0) {
-                let sublist = document.createElement("ul")
-                for (let i = 0; i < node.children.length; i++) {
-                    let sublistItem = buildTocListFunction(node.children[i])
-                    sublist.appendChild(sublistItem)
-                }
-                item.appendChild(sublist)
-            }
-            return item
-        }
-        let toc = await this.book.getToc()
-        if (toc.length > 0) {
-            let tocList = document.createElement("ul")
-            for (let i = 0; i < toc.length; i++) {
-                let item = buildTocListFunction(toc[i])
-                tocList.appendChild(item)
-            }
-            toolsContents.appendChild(tocList)
-        }
-        let decreaseTextSizeButton = document.createElement("a")
-        decreaseTextSizeButton.innerHTML = "decrease text size"
-        decreaseTextSizeButton.onclick = () => this.#decreaseTextSize()
-        toolsContents.appendChild(decreaseTextSizeButton)
-        let increaseTextSizeButton = document.createElement("a")
-        increaseTextSizeButton.innerHTML = "increase text size"
-        increaseTextSizeButton.onclick = () => this.#increaseTextSize()
-        toolsContents.appendChild(increaseTextSizeButton)
-        
-
-        this.tools.innerHTML = ""
-        this.tools.appendChild(toolsContents)        
-    }*/
 
     async fixLinks(element, contextFilename) {
         let links = element.getElementsByTagName("a")
@@ -2756,14 +2471,9 @@ class EbookDisplay extends Display {
         while ((await this.#overflowTriggerred()) == false && previousEnd != end && end != null) {
             previousEnd = end
             end = await this.book.findSpaceAfter(previousEnd)
-            this.shadowElement.innerHTML = await this.book.getContentsAt(start, end) //this.book.getContentsAt(start, end)
+            this.shadowElement.innerHTML = await this.book.getContentsAt(start, end)
         }
-        /*let imgs = this.shadowElement.getElementsByTagName("img")
-        let srcs = []
-        for (let i = 0; i < imgs.length; i++) {
-            srcs.push(imgs[i].getAttribute("src"))
-        }*/
-        //console.log("srcs: " + srcs)
+
         if (previousEnd != null) {
             return new Page(start, previousEnd)
         } else {
