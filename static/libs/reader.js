@@ -1350,7 +1350,6 @@ class ComicDisplay extends Display {
     }
 
     #showLoading() {
-        console.log("showing loading")
         this.loading.style.display = "block"
     }
 
@@ -2102,6 +2101,11 @@ class EbookDisplay extends Display {
     }
 
     configure(settings) {
+        if (settings.position != undefined) {
+            this.position = settings.position
+        } else {
+            this.position = 0
+        }
         if (settings.leftMarginPercent != undefined) {
             this.leftMarginPercent = settings.leftMarginPercent
         } else {
@@ -2177,11 +2181,12 @@ class EbookDisplay extends Display {
 
     triggerComputationForAllPages() {
         this.book.getSize()
-            .then(size => this.#getPageFor(size)
+            .then(size => {
+                this.#getPageFor(size)
                 .then((page) => {
                     if (page != null) console.log("computed final page " + page.start + " - " + page.end)
                 })
-            )
+            })
     }
 
     #setTextSize(value) {
@@ -2479,7 +2484,7 @@ class EbookDisplay extends Display {
             let page = await this.#computeMaximalPage(start)
             originalPageCache.addPage(page)
             let lastSavedTimestamp = Date.now()
-            while (! page.contains(position) && originalPageCache == currentPageCache) {
+            while (! page.contains(position) && originalPageCache == currentPageCache && this.stopped != true) {
                 let newStart = page.end + 1
                 page = await this.#computeMaximalPage(newStart)
                 originalPageCache.addPage(page)
@@ -2490,6 +2495,7 @@ class EbookDisplay extends Display {
                 currentPageCache = this.#getPagesCache()
                 await this.#timeout(10)
             }
+            console.log("finished computing page for " + position + " (stopped " + this.stopped + ")")
             this.#serializePageCache(originalPageCache)
             if (originalPageCache != currentPageCache) {
                 this.computationInProgress = false
@@ -2580,6 +2586,13 @@ class ChronicReader {
         chronicReaderInstance = this
     }
 
+    destroy() {
+        if (this.type == "book") {
+            console.log("attempting stopping computation")
+            this.display.stopped = true
+        }
+    }
+
     /*#getInitialPosition() {
         if (this.settings.position) {
             return this.settings.position
@@ -2599,6 +2612,7 @@ class ChronicReader {
             type = "comic"
             archiveType = "zip"
         }
+        this.type = type
         if (type == "book") {
             this.display = new EbookDisplay(this.element, this.settings)
         } else if (type == "comic") {
@@ -2623,6 +2637,7 @@ class ChronicReader {
                 }
             }).then(wrapper => {
                 if (wrapper) {
+                    console.log("downloaded wrapper successfully")
                     this.display.setBook(wrapper)
                 }
             })
