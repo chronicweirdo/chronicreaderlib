@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="static/libs/jszip.js"></script>
+    <script src="static/libs/reader.js"></script>
+    <script>
+        var bookReader = new ChronicReader('static/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub', document.getElementById("bookDisplayDiv"))
+        var comicReader = new ChronicReader('static/books/Feature_Comics_111.cbz', document.getElementById("comicDisplayDiv"))
+    </script>
+    <style>
+        .book {
+            width: 500px;
+            height: 800px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div id="bookDisplayDiv" class="book"></div>
+
+    <div id="comicDisplayDiv" class="book"></div>
+</body>
+</html>
