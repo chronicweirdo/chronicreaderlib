@@ -1353,6 +1353,14 @@ class Display {
 
     }
 
+    hideTools() {
+        if (this.showTools) {
+            this.tools.style.display = "none"
+            this.toolsMinimizeLeft.style.display = "none"
+            this.toolsMinimizeRight.style.display = "none"
+        }
+    }
+
     buildUi() {
         if (this.showTools == false) {
             this.toolsButtonPercent = 0
@@ -1384,13 +1392,29 @@ class Display {
         }
         
         if (this.showTools) {
-            this.tools = createDivElement(this.element, 0, 0, "100%", "100%", "#ffffffee")
+            this.toolsBackgroundColor = "#ffffffee"
+            this.tools = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100-this.leftMarginPercent*2) + "%", "100%", this.toolsBackgroundColor)
             this.tools.style.display = "none"
             this.tools.style.overflow = "scroll"
             this.tools.style.zIndex = 1000
-            this.toolsLeft.onclick = () => {this.tools.style.display = "block"}
-            this.toolsRight.onclick = () => {this.tools.style.display = "block"}
-            this.tools.onclick = () => {this.tools.style.display = "none"}
+
+            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeLeft.style.display = "none"
+            this.toolsMinimizeLeft.style.zIndex = 1000
+            
+            this.toolsMinimizeRight = createDivElement(this.element, (100-this.leftMarginPercent) + "%", 0, this.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeRight.style.display = "none"
+            this.toolsMinimizeRight.style.zIndex = 1000
+
+            let displayToolsFunction = () => {
+                this.tools.style.display = "block"
+                this.toolsMinimizeLeft.style.display = "block"
+                this.toolsMinimizeRight.style.display = "block"
+            }
+            this.toolsLeft.onclick = displayToolsFunction
+            this.toolsRight.onclick = displayToolsFunction
+            this.toolsMinimizeLeft.onclick = this.hideTools
+            this.toolsMinimizeRight.onclick = this.hideTools
         }
         this.loading = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
         this.loading.appendChild(this.getLoadingSvg())
@@ -1403,10 +1427,11 @@ class Display {
         let toolsContents = document.createElement("div")
         toolsContents.classList.add("ebookPage")
         toolsContents.style.position = "absolute"
-        toolsContents.style.top = this.topMarginPercent + "%"
-        toolsContents.style.left = this.leftMarginPercent + "%"
-        toolsContents.style.width = (100 - 2 * this.leftMarginPercent) + "%"
+        toolsContents.style.top = 0
+        toolsContents.style.left = 0
+        toolsContents.style.width = "100%"
 
+        // add cover
         let coverBase64 = await this.book.getCover()
         if (coverBase64) {
             let coverElement = document.createElement("img")
@@ -1414,11 +1439,15 @@ class Display {
             toolsContents.appendChild(coverElement)
         }
         
+        // add toc
         let buildTocListFunction = (node) => {
             let item = document.createElement("li")
             let link = document.createElement("a")
             link.innerHTML = node.name
-            link.onclick = () => this.displayPageFor(node.position)
+            link.onclick = () => {
+                this.displayPageFor(node.position)
+                this.hideTools()
+            }
             item.appendChild(link)
             if (node.children && node.children.length > 0) {
                 let sublist = document.createElement("ul")
@@ -1426,6 +1455,22 @@ class Display {
                     let sublistItem = buildTocListFunction(node.children[i])
                     sublist.appendChild(sublistItem)
                 }
+                sublist.style.display = "none"
+                let button = document.createElement("span")
+                button.innerHTML = "+"
+                button.style.display = "inline-block"
+                button.style.padding = "5px"
+                button.style.cursor = "pointer"
+                button.onclick = () => {
+                    if (sublist.style.display == "none") {
+                        sublist.style.display = "block"
+                        button.innerHTML = "-"
+                    } else {
+                        sublist.style.display = "none"
+                        button.innerHTML = "+"
+                    }
+                }
+                item.appendChild(button)
                 item.appendChild(sublist)
             }
             return item
