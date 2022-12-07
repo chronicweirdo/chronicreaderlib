@@ -23,25 +23,7 @@ Initialize the reader by providing a URL to the book and a component on your pag
 
 ## Demo
 
-<script src="static/libs/jszip.js"></script>
-<script src="static/libs/reader.js"></script>
-
-<style>
-    .book {
-        width: 500px;
-        height: 800px;
-        overflow: hidden;
-    }
-</style>
-
-<div id="bookDisplayDiv" class="book"></div>
-
-<div id="comicDisplayDiv" class="book"></div>
-
-<script>
-    var bookReader = new ChronicReader('static/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub', document.getElementById("bookDisplayDiv"))
-    var comicReader = new ChronicReader('static/books/Feature_Comics_111.cbz', document.getElementById("comicDisplayDiv"))
-</script>
+You can see a live demo on the [github pages site](https://chronicweirdo.github.io/chronicreaderlib/) for this repository.
 
 ## Interfaces
 
