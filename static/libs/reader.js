@@ -138,7 +138,7 @@ zip wrapper:
 */
 
 class EbookNode {
-    static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp", "?pagebreak", "meta", "item", "?xml"]
+    //static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp","?pagebreak","meta","item","?xml"]
     static LEAF_ELEMENTS = ["img", "tr", "image", "svg"]
 
     constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
@@ -259,9 +259,9 @@ class EbookNode {
         return attributes
     }
 
-    static #isVoidElement(tagName) {
+    /*static #isVoidElement(tagName) {
         return tagName != null && tagName.startsWith("!--") || EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
-    }
+    }*/
 
     static #shouldBeLeafElement(tagName) {
         return tagName != null && EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
@@ -2727,8 +2727,4 @@ class ChronicReader {
     }
 }
 
-function jumpTo(position) {
-    if (chronicReaderInstance) {
-        chronicReaderInstance.displayPageFor(position)
-    }
-}
+//export { ChronicReader }
