@@ -1413,8 +1413,8 @@ class Display {
             }
             this.toolsLeft.onclick = displayToolsFunction
             this.toolsRight.onclick = displayToolsFunction
-            this.toolsMinimizeLeft.onclick = this.hideTools
-            this.toolsMinimizeRight.onclick = this.hideTools
+            this.toolsMinimizeLeft.onclick = () => this.hideTools()
+            this.toolsMinimizeRight.onclick = () => this.hideTools()
         }
         this.loading = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
         this.loading.appendChild(this.getLoadingSvg())
