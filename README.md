@@ -8,9 +8,28 @@ Depends on the [JSZip](https://stuk.github.io/jszip/) library.
 
 Add required dependencies to your web page:
 
-```
+``` html
 <script src="/libs/jszip.js"></script>
 <script src="/libs/reader.js"></script>
+```
+
+Add a div element where to display the book:
+
+``` html
+<div id="bookDisplayDiv" class="book"></div>
+```
+
+Style the element to specify the dimensions of the book on your page:
+
+``` html
+<style>
+    .book {
+        position: relative;
+        width: 500px;
+        height: 800px;
+        overflow: hidden;
+    }
+</style>
 ```
 
 Initialize the reader by providing a URL to the book and a component on your page:
@@ -24,22 +43,6 @@ Initialize the reader by providing a URL to the book and a component on your pag
 ## Demo
 
 You can see a live demo on the [github pages site](https://chronicweirdo.github.io/chronicreaderlib/) for this repository.
-
-## Interfaces
-
-- inputs
-    - file url
-    - page element to transform into reader section
-    - whether to show controls or not, margins, stuff like that
-
-Todo:
-
-- add loading animation (svg)
-- add next, prev, tools icons (svg)
-- add resize handlers
-- save some status to local storage (current position, jump zoom)
-- add local storage clearing tools
-- make things configurable
 
 ## Release process
 
