@@ -6,9 +6,10 @@
     <script src="/libs/rar.js"></script>
     <script src="/libs/reader.js"></script>
     <script>
-        var urls = ["/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub", "/books/Feature_Comics_111.cbz"];
+        var urls = ["/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub", 
+            "/books/Feature_Comics_111.cbz"];
         var positions = [0, 10]
-        var index = 0;
+        var index = 1;
         var book;
         var reader;
         function negative(col) {
@@ -17,11 +18,11 @@
         function displayPageCallback(display) {
             let dominantColor = display.dominantColor
             if (dominantColor) {
-                console.log(dominantColor)
+                //console.log(dominantColor)
                 let color = "rgb(" + dominantColor[0] + "," + dominantColor[1] + "," + dominantColor[2] + ")" 
                 document.body.style.backgroundColor = color
                 let neg = negative(dominantColor)
-                console.log(neg)
+                //console.log(neg)
                 display.setControlsColor("rgba(" + neg[0] + "," + neg[1] + "," + neg[2] + ",0.5)")
             } else {
                 document.body.style.backgroundColor = "white"
@@ -29,7 +30,10 @@
         }
 
         function displayBook() {
-            console.log(urls[index])
+            //console.log(urls[index])
+            if (reader) {
+                reader.destroy()
+            }
             reader = new ChronicReader(
                 urls[index], 
                 document.getElementById("page"),
@@ -66,6 +70,10 @@
             left: 10%;
             /*background-color: #cc9999;*/
             overflow: hidden;
+        }
+        .page a {
+            text-decoration: underline;
+            cursor: pointer;
         }
         .ebookPage img, .ebookPage image {
             max-width: 100%;
