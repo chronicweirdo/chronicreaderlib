@@ -4,6 +4,11 @@ Embeddable web library for loading and displaying EPUB, CBZ files.
 
 Depends on the [JSZip](https://stuk.github.io/jszip/) library.
 
+This project is one of the successors of the
+[Chronic Reader service](https://github.com/chronicweirdo/reader), with the
+purpose of making the ebook and comic display functionality from that project
+available as a library that can be used on any website by anyone.
+
 ## Usage
 
 Add required dependencies to your web page:
