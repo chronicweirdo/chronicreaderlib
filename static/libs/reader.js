@@ -2128,7 +2128,6 @@ class EbookWrapper extends BookWrapper {
     }
 
     async parseNcx() {
-        console.log("parsing ncx")
         let ncx = await this.#getNcx()
         let ncxXmlText = ncx.contents
         let xmlNode = await EbookNode.parseXmlToEbookNode(ncxXmlText)
