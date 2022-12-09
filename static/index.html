@@ -7,7 +7,7 @@
         var urls = ["/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub", 
             "/books/Feature_Comics_111.cbz"];
         var positions = [0, 10]
-        var index = 1;
+        var index = 0;
         var book;
         var reader;
         function negative(col) {
@@ -72,6 +72,9 @@
         .page a {
             text-decoration: underline;
             cursor: pointer;
+        }
+        .page .highlighted {
+            font-style: italic;
         }
         .ebookPage img, .ebookPage image {
             max-width: 100%;

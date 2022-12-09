@@ -809,7 +809,7 @@ class EbookNode {
         }
     }
 
-    findChildrenWithTag(tagName, deep = true) {
+    findChildrenWithTag(tagName, deep = false) {
         let result = []
         for (let i = 0; i < this.children.length; i++) {
             if (this.children[i].name == tagName) {
@@ -1212,6 +1212,7 @@ class ColorMap {
 class Display {
     LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
     SVG_NAMESPACE = "http://www.w3.org/2000/svg"
+    TOC_HIGHLIGHT_CLASS = "highlighted"
     constructor(element, settings) {
         this.element = element
         this.configure(settings)
@@ -1444,6 +1445,7 @@ class Display {
             let item = document.createElement("li")
             let link = document.createElement("a")
             link.innerHTML = node.name
+            link.setAttribute("position", node.position)
             link.onclick = () => {
                 this.displayPageFor(node.position)
                 this.hideTools()
@@ -1483,6 +1485,7 @@ class Display {
                 tocList.appendChild(item)
             }
             toolsContents.appendChild(tocList)
+            this.tocElement = tocList
         }
         let decreaseTextSizeButton = document.createElement("a")
         decreaseTextSizeButton.innerHTML = "zoom out"
@@ -1495,6 +1498,40 @@ class Display {
         
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        
+    }
+
+    tocFindParentLink(currentLink) {
+        if (currentLink.parentElement.tagName == "LI"
+            && currentLink.parentElement.parentElement.tagName == "UL"
+            && currentLink.parentElement.parentElement.parentElement.tagName == "LI") {
+            let links = currentLink.parentElement.parentElement.parentElement.getElementsByTagName("a")
+            if (links.length > 1) {
+                return links[0]
+            }
+        }
+        return null
+    }
+
+    highlightTocPosition(position) {
+        if (this.tocElement) {
+            let highlighted = Array.from(this.tocElement.getElementsByClassName(this.TOC_HIGHLIGHT_CLASS))
+            for (let i = 0; i < highlighted.length; i++) {
+                highlighted[i].classList.remove(this.TOC_HIGHLIGHT_CLASS)
+            }
+            let links = this.tocElement.getElementsByTagName("a")
+            for (let i = links.length - 1; i >= 0; i--) {
+                let linkPosition = Number.parseInt(links[i].getAttribute("position"))
+                if (linkPosition == position || linkPosition < position) {
+                    links[i].classList.add(this.TOC_HIGHLIGHT_CLASS)
+                    let parent = this.tocFindParentLink(links[i])
+                    while (parent != null) {
+                        parent.classList.add(this.TOC_HIGHLIGHT_CLASS)
+                        parent = this.tocFindParentLink(parent)
+                    }
+                    break
+                }
+            }
+        }
     }
 
     showLoading() {
@@ -1805,6 +1842,7 @@ class ComicDisplay extends Display {
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
         this.#computeImageDominantColor()
+        this.highlightTocPosition(position)
         this.hideLoading()
         if (this.displayPageForCallback) {
             this.displayPageForCallback(this)
@@ -2029,12 +2067,12 @@ class EbookWrapper extends BookWrapper {
                 if (! documentNode) throw "failed to parse opf xml"
                 let metadataNode = documentNode.findChildrenWithTag("metadata", true).pop()
                 if (! metadataNode) throw "failed to find metadata node"
-                let metaNodes = metadataNode.findChildrenWithTag("meta")
+                let metaNodes = metadataNode.findChildrenWithTag("meta", true)
                 let coverMeta = metaNodes.find((node) => node.attributes && node.attributes["name"] == "cover")
                 if (! coverMeta) throw "failed to find cover meta entry"
                 let manifestNode = documentNode.findChildrenWithTag("manifest", true).pop()
                 if (! manifestNode) throw "failed to find manifest node"
-                let coverItem = manifestNode.findChildrenWithTag("item").find(item => item.attributes["id"] == coverMeta.attributes["content"])
+                let coverItem = manifestNode.findChildrenWithTag("item", true).find(item => item.attributes["id"] == coverMeta.attributes["content"])
                 let href = coverItem.attributes["href"]
                 let coverBase64 = await this.getImageBase64(opfFile, href)
                 this.cover = coverBase64
@@ -2090,6 +2128,7 @@ class EbookWrapper extends BookWrapper {
     }
 
     async parseNcx() {
+        console.log("parsing ncx")
         let ncx = await this.#getNcx()
         let ncxXmlText = ncx.contents
         let xmlNode = await EbookNode.parseXmlToEbookNode(ncxXmlText)
@@ -2234,7 +2273,7 @@ class EbookWrapper extends BookWrapper {
     async #fixImages(node, contextFilename) {
         const srcRegex = /src=\"([^\"]+)\"/
 
-        let images = node.findChildrenWithTag("img")// element.getElementsByTagName("img")
+        let images = node.findChildrenWithTag("img", true)// element.getElementsByTagName("img")
         for (let i = 0; i < images.length; i++) {
             let image = images[i]
             let imageContent = image.getContent()
@@ -2452,6 +2491,7 @@ class EbookDisplay extends Display {
             // links need to be fixed on the actual final element
             // because an onclick event is configured on them
             await this.fixLinks(this.page, node.key)
+            this.highlightTocPosition(position)
             this.hideLoading()
             await this.#timeout(10)
             if (this.displayPageForCallback) {
