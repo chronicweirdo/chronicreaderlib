@@ -26,6 +26,7 @@
                     end = newEnd
                 }
                 console.log(this.names.length)
+                this.names.sort()
                 console.log(this.names)
                 //console.log("first file header end: " + firstFileHeaderEnd)
                 //let secondFileHeaderEnd = this.readHeader(firstFileHeaderEnd)
@@ -49,6 +50,7 @@
             HEADER_FLAG_LHD_LARGE = 0x0100
             HEADER_FLAG_LHD_SALT = 0x0400
             HEADER_FLAG_LHD_EXTTIME = 0x1000
+            HEADER_FLAG_LARGE_HEADER_SIZE = 0x8000
             readHeader(start) {
                 let headerBytes = this.bytes.slice(start, start + this.BASE_HEADER_LENGTH)
                 let headerView = new DataView(headerBytes)
@@ -64,8 +66,17 @@
                 let lhdLargeIsSet = (this.HEADER_FLAG_LHD_LARGE & flags) != 0
                 let lhdSaltIsSet = (this.HEADER_FLAG_LHD_SALT & flags) != 0
                 let lhdExtTimeIsSet = (this.HEADER_FLAG_LHD_EXTTIME & flags) != 0
+                //let largeHeaderSizeIsSet = (this.HEADER_FLAG_LARGE_HEADER_SIZE & flags) != 0
                 //console.log(isEncrypted)
                 let headerSize = headerView.getUint16(5, true) //getString(headerView, 2, 5, true)
+
+                let restStart = start + this.BASE_HEADER_LENGTH
+                /*if (largeHeaderSizeIsSet) {
+                    console.log("large header detected!")
+                    let restOfHeaderSize = new DataView(this.bytes.slice(restStart, restStart + 4)).getUint32(0, true)
+                    restStart = restStart + 4
+                    headerSize = headerSize + restOfHeaderSize // todo: is this correct, just an addition?
+                }*/
                 //console.log("header size: " + headerSize)
                 //console.log("header size: " + headerSize.toString(2))
 
@@ -75,7 +86,7 @@
                 let headerFlagsBytes = this.bytes.slice(start + 2 + 1, start+2+1+2)
                 let headerSizeBytes = this.bytes.slice(start + 2 + 1 + 2, start+2+1+2+2)*/
 
-                let restStart = start + this.BASE_HEADER_LENGTH
+                
                 if (type == this.HEADER_TYPE_MAIN_HEADER) {
                     let headerEnd = restStart + 2 + 4 + (isEncrypted ? 1 : 0)
                     let restOfHeaderView = new DataView(this.bytes.slice(restStart, headerEnd))
