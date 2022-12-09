@@ -6,6 +6,15 @@
     <script src="/libs/rar.js"></script>
     <script src="/libs/reader.js"></script>
     <script>
+        class RarEntry {
+            constructor(name, unpVer, headerStart, dataStart, dataSize) {
+                this.name = name
+                this.unpVer = unpVer
+                this.headerStart = headerStart
+                this.dataStart = dataStart
+                this.dataSize = dataSize
+            }
+        }
         class RarReader {
             RAR_FILE_SIGNATURE = '\x52\x61\x72\x21\x1a\x07\x00'
             
@@ -14,22 +23,15 @@
             // http://acritum.com/winrar/rar-format
             constructor(bytes /*as ArrayBuffer*/) {
                 this.bytes = bytes
-                this.names = []
+                this.entries = []
                 this.verifySignature()
                 let mainHeaderEnd = this.readHeader(7)
-                console.log("main header end: " + mainHeaderEnd)
                 let end = mainHeaderEnd
-                console.log("archive size: " + this.bytes.byteLength)
                 while (end && end < this.bytes.byteLength) {
                     let newEnd = this.readHeader(end)
-                    console.log("read until " + newEnd)
                     end = newEnd
                 }
-                console.log(this.names.length)
-                this.names.sort()
-                console.log(this.names)
-                //console.log("first file header end: " + firstFileHeaderEnd)
-                //let secondFileHeaderEnd = this.readHeader(firstFileHeaderEnd)
+                console.log(this.entries)
             }
 
             verifySignature() {
@@ -57,35 +59,13 @@
 
                 let crc = getString(headerView, 2, 0, true)
                 let type = headerView.getUint8(2)
-                //console.log(type.toString(16))
-                //console.log(type == 0x73)
-                let flags = headerView.getUint16(3) // getString(headerView, 2, 3, true)
-                //console.log(flags.toString(16))
-                //console.log(this.HEADER_FLAG_MHD_ENCRYPTVER & flags)
+                let flags = headerView.getUint16(3)
                 let isEncrypted = (this.HEADER_FLAG_MHD_ENCRYPTVER & flags) != 0
                 let lhdLargeIsSet = (this.HEADER_FLAG_LHD_LARGE & flags) != 0
                 let lhdSaltIsSet = (this.HEADER_FLAG_LHD_SALT & flags) != 0
                 let lhdExtTimeIsSet = (this.HEADER_FLAG_LHD_EXTTIME & flags) != 0
-                //let largeHeaderSizeIsSet = (this.HEADER_FLAG_LARGE_HEADER_SIZE & flags) != 0
-                //console.log(isEncrypted)
-                let headerSize = headerView.getUint16(5, true) //getString(headerView, 2, 5, true)
-
+                let headerSize = headerView.getUint16(5, true)
                 let restStart = start + this.BASE_HEADER_LENGTH
-                /*if (largeHeaderSizeIsSet) {
-                    console.log("large header detected!")
-                    let restOfHeaderSize = new DataView(this.bytes.slice(restStart, restStart + 4)).getUint32(0, true)
-                    restStart = restStart + 4
-                    headerSize = headerSize + restOfHeaderSize // todo: is this correct, just an addition?
-                }*/
-                //console.log("header size: " + headerSize)
-                //console.log("header size: " + headerSize.toString(2))
-
-                /*let headerCrcBytes = this.bytes.slice(start, start+2)
-                let headerTypeBytes = this.bytes.slice(start + 2, start+2+1)
-                console.log(headerTypeBytes)
-                let headerFlagsBytes = this.bytes.slice(start + 2 + 1, start+2+1+2)
-                let headerSizeBytes = this.bytes.slice(start + 2 + 1 + 2, start+2+1+2+2)*/
-
                 
                 if (type == this.HEADER_TYPE_MAIN_HEADER) {
                     let headerEnd = restStart + 2 + 4 + (isEncrypted ? 1 : 0)
@@ -98,20 +78,15 @@
                     let packSize = fileHeaderView.getUint32(0, true)
                     let packedDataSize = packSize
                     let unpSize = fileHeaderView.getUint32(4, true)
-                    //console.log("unpacked size: " + unpSize)
-                    //console.log("unpacked size: " + unpSize.toString(2))
                     let hostOs = fileHeaderView.getUint8(8)
                     let fileCrc = fileHeaderView.getUint32(9)
                     let fileTime = fileHeaderView.getUint32(13)
                     let unpVer = fileHeaderView.getUint8(17)
                     let method = fileHeaderView.getUint8(18)
                     let nameSize = fileHeaderView.getInt16(19, true) // todo: should all be read with little endian?
-                    //console.log("name size: " + nameSize)
-                    //console.log(nameSize.toString(2))
                     let fileAttr = fileHeaderView.getUint32(21)
 
                     if (lhdLargeIsSet) {
-                        //console.log("large file!")
                         let largeStart = end
                         end += 8
                         let highSizeView = new DataView(this.bytes.slice(largeStart, end))
@@ -119,18 +94,13 @@
                         packedDataSize += highPackSize * 0x100000000
                         let highUnpSize = highSizeView.getUint32(4, true)
                     }
-                    //console.log("packed data size: " + packedDataSize)
-                    //console.log("packed data size: " + packedDataSize.toString(2))
 
                     let fileNameStart = end
                     end += nameSize
                     let nameView = new DataView(this.bytes.slice(fileNameStart, end))
                     let name = getString(nameView, nameSize, 0, true)
-                    console.log("name: " + name)
-                    this.names.push(name)
 
                     if (lhdSaltIsSet) {
-                        //console.log("reading salt")
                         let saltStart = end
                         end += 8
                     }
@@ -138,9 +108,16 @@
                     if (lhdExtTimeIsSet) {
                         throw "ext time section not supported"
                     }
-                    //console.log("read header size: " + (end - start))
+                    let entry = new RarEntry(name, unpVer, start, start + headerSize, packedDataSize)
+                    this.entries.push(entry)
                     return start + headerSize + packedDataSize
                 }
+            }
+            getEntry(index) {
+                let entry = this.entries[index]
+
+                let entryBytes = this.bytes.slice(entry.dataStart, entry.dataStart + entry.dataBytes)
+
             }
         }
 
