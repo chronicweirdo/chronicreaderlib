@@ -6,6 +6,23 @@
     <script src="/libs/rar.js"></script>
     <script src="/libs/reader.js"></script>
     <script>
+        function tos(b, l = null) {
+            let s = b.toString(2)
+            if (l == null) {
+                if (0 < s.length && s.length < 4) {
+                    s = s.padStart(4, '0')
+                } else if (4 < s.length && s.length < 8) {
+                    s = s.padStart(8, '0')
+                } else if (8 < s.length && s.length < 16) {
+                    s = s.padStart(16, '0')
+                } else if (16 < s.length && s.length < 32) {
+                    s = s.padStart(32, '0')
+                }
+            } else {
+                s = s.padStart(l, '0')
+            }
+            return s
+        }
         class RarEntry {
             constructor(name, unpVer, headerStart, dataStart, dataSize) {
                 this.name = name
@@ -32,6 +49,7 @@
                     end = newEnd
                 }
                 console.log(this.entries)
+                this.getEntry(0)
             }
 
             verifySignature() {
@@ -113,12 +131,28 @@
                     return start + headerSize + packedDataSize
                 }
             }
+            // https://www.rfc-editor.org/rfc/rfc1951#page-6
             getEntry(index) {
+                console.log("processing entry")
                 let entry = this.entries[index]
 
-                let entryBytes = this.bytes.slice(entry.dataStart, entry.dataStart + entry.dataBytes)
+                let entryBytes = this.bytes.slice(entry.dataStart, entry.dataStart + entry.dataSize)
+                let data = new DataView(entryBytes)
+                let b = data.getUint8(0)
+                console.log(tos(b))
 
+                let isPpm = b & 0b1000000 != 0
+                console.log("is ppm: " + isPpm)
+                let keepOldTable = b & 0b0100000 != 0
+                console.log("keep old table: " + keepOldTable)
+
+                for (let i = 0; i < 20; i++) {
+                    let b = data.getUint8(i + 1)
+                    console.log(tos(b, 8))
+                }
             }
+
+            
         }
 
         var url = "/books/RangerHouse.cbr";
