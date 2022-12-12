@@ -3,7 +3,8 @@
 <head>
     <script src="/libs/jszip.js"></script>
     <!-- https://github.com/43081j/rar.js -->
-    <script src="/libs/rar.js"></script>
+    <!--script src="/libs/rar.js"></script-->
+    <script src="/libs/libunrar.js"></script>
     <script src="/libs/reader.js"></script>
     <script>
         function tos(b, l = null) {
@@ -155,6 +156,8 @@
             
         }
 
+        var rar = null
+
         var url = "/books/RangerHouse.cbr";
         function getString(view, length, offset, raw) {
             offset = offset || 0;
@@ -181,6 +184,45 @@
                 return decodeURIComponent(window.escape(str));
             }
         }
+
+        // https://stackoverflow.com/questions/10982712/convert-binary-data-to-base64-with-javascript
+        var encoder = new TextEncoder("ascii");
+        var decoder = new TextDecoder("ascii");
+        var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
+        function toBase64(dataArr){
+            var padding = dataArr.byteLength % 3;
+            var len = dataArr.byteLength - padding;
+            padding = padding > 0 ? (3 - padding) : 0;
+            var outputLen = ((len/3) * 4) + (padding > 0 ? 4 : 0);
+            var output = new Uint8Array(outputLen);
+            var outputCtr = 0;
+            for(var i=0; i<len; i+=3){              
+                var buffer = ((dataArr[i] & 0xFF) << 16) | ((dataArr[i+1] & 0xFF) << 8) | (dataArr[i+2] & 0xFF);
+                output[outputCtr++] = base64Table[buffer >> 18];
+                output[outputCtr++] = base64Table[(buffer >> 12) & 0x3F];
+                output[outputCtr++] = base64Table[(buffer >> 6) & 0x3F];
+                output[outputCtr++] = base64Table[buffer & 0x3F];
+            }
+            if (padding == 1) {
+                var buffer = ((dataArr[len] & 0xFF) << 8) | (dataArr[len+1] & 0xFF);
+                output[outputCtr++] = base64Table[buffer >> 10];
+                output[outputCtr++] = base64Table[(buffer >> 4) & 0x3F];
+                output[outputCtr++] = base64Table[(buffer << 2) & 0x3F];
+                output[outputCtr++] = base64Table[64];
+            } else if (padding == 2) {
+                var buffer = dataArr[len] & 0xFF;
+                output[outputCtr++] = base64Table[buffer >> 2];
+                output[outputCtr++] = base64Table[(buffer << 4) & 0x3F];
+                output[outputCtr++] = base64Table[64];
+                output[outputCtr++] = base64Table[64];
+            }
+            
+            var ret = decoder.decode(output);
+            output = null;
+            dataArr = null;
+            return ret;
+        }
+
         window.onload = function() {
             fetch(url)
                 .then(res => res.blob())
@@ -190,7 +232,25 @@
                 })
                 .then(ab => {
                     console.log(ab)
-                    let rarReader = new RarReader(ab)
+                    // https://github.com/wcchoi/libunrar-js
+                    rar = readRARContent([{
+                        "name": "rarfile.rar",
+                        "content": new Uint8Array(ab)
+                    }], null, null)
+                    console.log(rar)
+                    let files = Object.keys(rar.ls)
+                    console.log(files)
+                    let file = rar.ls[files[0]]
+                    let fileContent = file.fileContent
+                    console.log(fileContent)
+                    var decoder = new TextDecoder('utf8')
+                    //var b64encoded = btoa(decoder.decode(fileContent))
+                    var b64encoded = toBase64(fileContent)
+                    //console.log(b64encoded)
+                    var imgData = "data:image/jpeg;base64," + b64encoded
+                    console.log(imgData)
+                    document.getElementById("page").src = imgData
+                    //let rarReader = new RarReader(ab)
 
                     /*var header = ab.slice(0, 14)
                     const headerView = new DataView(header);
@@ -211,5 +271,6 @@
 </head>
 <body>
     Rar test
+    <img id="page" />
 </body>
 </html>
