@@ -10,7 +10,6 @@ function executeWithDelay(func, ms) {
     let getExecuteWithDelayFunction = function(triggerTimestamp) {
         return () => {
             if (triggerTimestamp == delayExecutionTriggerTimestamp) {
-                //console.log("execute with delay for " + triggerTimestamp + " " + delayExecutionTriggerTimestamp)
                 func()
             }
         }
@@ -132,14 +131,7 @@ function createDivElement(parent, left, top, width, height, color) {
     return element
 }
 
-/*
-zip wrapper:
-- get list of files
-- get file contents as text or as bytes
-*/
-
 class EbookNode {
-    //static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp","?pagebreak","meta","item","?xml"]
     static LEAF_ELEMENTS = ["img", "tr", "image", "svg"]
 
     constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
@@ -156,7 +148,6 @@ class EbookNode {
                 console.log(error)
             }
         }
-        //this.#parseId()
     }
 
     static #parseAttributes(content) {
@@ -260,10 +251,6 @@ class EbookNode {
         return attributes
     }
 
-    /*static #isVoidElement(tagName) {
-        return tagName != null && tagName.startsWith("!--") || EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
-    }*/
-
     static #shouldBeLeafElement(tagName) {
         return tagName != null && EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
     }
@@ -277,7 +264,6 @@ class EbookNode {
     }
         
     static isBothTag(str) {
-        //return /^<[^>\/]+\/>$/.exec(str) != null
         return str.startsWith("<!--") 
             || (str.startsWith("<") && str.endsWith("/>"))
             || (str.startsWith("<?xml") && str.endsWith("?>"))
@@ -352,24 +338,12 @@ class EbookNode {
                     var name = EbookNode.#getTagName(content)
                     // can only be a tag
                     if (EbookNode.#isEndTag(content)) {
-                        // we check that this tag closes the current node correctly
-                        /*if (EbookNode.#isVoidElement(name)) {
-                            // the last child should have the correct name
-                            var lastChild = current.children[current.children.length - 1]
-                            if (name != lastChild.name) {
-                                throw "incompatible end " + name + " for void tag " + lastChild.name
-                            } else {
-                                lastChild.content += content
-                            }
-                        } else {*/
-                            // the current node should have the correct name, and it is getting closed
-                            if (name != current.name) {
-                                throw "incompatible end tag " + name + " for " + current.name
-                            }
-                            // move current node up
-                            current = current.parent
-                        /*}*/
-                    } else if (EbookNode.isBothTag(content) /*&& EbookNode.#isVoidElement(name)*/) {
+                        if (name != current.name) {
+                            throw "incompatible end tag " + name + " for " + current.name
+                        }
+                        // move current node up
+                        current = current.parent
+                    } else if (EbookNode.isBothTag(content)) {
                         // just add this tag without content
                         current.#addChild(new EbookNode(name, content))
                     } else {
@@ -402,50 +376,8 @@ class EbookNode {
             bodyNode.#collapseLeaves()
             bodyNode.#updatePositions(entrancePosition)
         }
-        /*if (filename != null && ebook != null) {
-            console.log("updating images")
-            await bodyNode.#updateImages(filename, ebook)
-        }*/
         return bodyNode
     }
-
-    /*static #isImage(tagName) {
-        return tagName.toLowerCase() == "img"
-    }*/
-    // go through structure and replace src of images with base64 from archive
-    /*async #updateImages(filename, ebook) {
-        if (this.name.toLowerCase == "img") {
-            let parser = new DOMParser()
-            let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
-            let imageElement = imageDocument.getElementsByTagName(this.name)[0]
-            let imagePath = imageElement.getAttribute("src")
-            try {
-                let base64 = await ebook.getImageBase64(filename, imagePath)
-                imageElement.setAttribute("src", base64)
-                this.content = imageElement.outerHTML
-            } catch (error) {
-                console.error("failed to load image base64: " + error)
-            }
-        } else if (this.name.toLowerCase == "image") {
-            let parser = new DOMParser()
-            let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
-            let imageElement = imageDocument.getElementsByTagName(this.name)[0]
-            let imagePath = imageElement.getAttribute("xlink:href")
-            try {
-                let base64 = await ebook.getImageBase64(filename, imagePath)
-                imageElement.setAttribute("xlink:href", base64)
-                this.content = imageElement.outerHTML
-            } catch (error) {
-                console.error("failed to load image base64: " + error)
-            }
-        }
-        if (this.children.length > 0) {
-            for (var i = 0; i < this.children.length; i++) {
-                var child = this.children[i]
-                await child.#updateImages(filename, ebook)
-            }
-        }
-    }*/
 
     static #isLink(tagName) {
         return tagName.toLowerCase() == "a"
@@ -887,19 +819,17 @@ class RarWrapper extends ArchiveWrapper {
     async #getRar() {
         if (this.rar == undefined) {
             var content = await this.data.arrayBuffer()
+            console.log(this.url)
             var rar = readRARContent([{
                 "name": "name.cbr",
                 "content": new Uint8Array(content)
-            }], null, null /*() => {
-                console.log("done reading rar")
-            }*/)
+            }], null, null)
             this.rar = rar
         }
         return this.rar
     }
     async getFiles() {
         var rar = await this.#getRar()
-        //console.log(rar)
         let files = Object.keys(rar.ls)
         return files.sort()
     }
@@ -946,9 +876,6 @@ class RarWrapper extends ArchiveWrapper {
         let rar = await this.#getRar()
         let file = rar.ls[filename]
         let fileContent = file.fileContent
-        //console.log(fileContent)
-        //var decoder = new TextDecoder('utf8')
-        //var b64encoded = btoa(decoder.decode(fileContent))
         var b64encoded = this.#toBase64(fileContent)
         return b64encoded
     }
@@ -2369,7 +2296,7 @@ class EbookWrapper extends BookWrapper {
     async #fixImages(node, contextFilename) {
         const srcRegex = /src=\"([^\"]+)\"/
 
-        let images = node.findChildrenWithTag("img", true)// element.getElementsByTagName("img")
+        let images = node.findChildrenWithTag("img", true)
         for (let i = 0; i < images.length; i++) {
             let image = images[i]
             let imageContent = image.getContent()
@@ -2806,14 +2733,6 @@ class ChronicReader {
             this.display.stopped = true
         }
     }
-
-    /*#getInitialPosition() {
-        if (this.settings.position) {
-            return this.settings.position
-        } else {
-            return 0
-        }
-    }*/
 
     #init() {
         let extension = getFileExtension(this.url)
