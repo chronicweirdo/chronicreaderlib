@@ -1280,7 +1280,7 @@ class Display {
         if (settings.controlsColor != undefined) {
             this.controlsColor = settings.controlsColor
         } else {
-            this.controlsColor = "#000000aa"
+            this.controlsColor = "#000000"
         }
         if (settings.displayPageForCallback != undefined) {
             this.displayPageForCallback = settings.displayPageForCallback
@@ -1386,6 +1386,13 @@ class Display {
         }
     }
 
+    #addControlHoverActions(element, svg) {
+        svg.style.opacity = .2
+        element.appendChild(svg)
+        element.onmouseover = () => svg.style.opacity = 1
+        element.onmouseout = () => svg.style.opacity = .2
+    }
+
     buildUi() {
         if (this.showTools == false) {
             this.toolsButtonPercent = 0
@@ -1397,22 +1404,22 @@ class Display {
         this.element.appendChild(this.page)
         this.previous = createDivElement(this.element, 0, 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#ff000000")
         if (this.displayControls) {
-            this.previous.appendChild(this.getPreviousSvg())
+            this.#addControlHoverActions(this.previous, this.getPreviousSvg())
         }
         this.previous.onclick = () => { this.goToPreviousView() }
         this.next = createDivElement(this.element, (100-this.leftMarginPercent) + "%", 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#00ff0000")
         if (this.displayControls) {
-            this.next.appendChild(this.getNextSvg())
+            this.#addControlHoverActions(this.next, this.getNextSvg())
         }
         this.next.onclick = () => { this.goToNextView() }
         if (this.showTools) {
             this.toolsLeft = createDivElement(this.element, 0, (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#ff00ff00")
             if (this.displayControls) {
-                this.toolsLeft.appendChild(this.getToolsSvg())
+                this.#addControlHoverActions(this.toolsLeft, this.getToolsSvg())
             }
             this.toolsRight = createDivElement(this.element, (100-this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#00ffff00")
             if (this.displayControls) {
-                this.toolsRight.append(this.getToolsSvg())
+                this.#addControlHoverActions(this.toolsRight, this.getToolsSvg())
             }
         }
         
