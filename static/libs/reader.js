@@ -1313,21 +1313,21 @@ class Display {
     }
     
     getNextSvg() {
-        let svg = this.createSvg(0, 0, 10, 40, "40%", "45%", "20%", "10%")
+        let svg = this.createSvg(0, 0, 10, 40, "30%", "40%", "40%", "auto")
         let path = this.createPath("M 2 2 L 8 20 L 2 38", 3)
         svg.appendChild(path)
         return svg
     }
 
     getPreviousSvg() {
-        let svg = this.createSvg(0, 0, 10, 40, "40%", "45%", "20%", "10%")
+        let svg = this.createSvg(0, 0, 10, 40, "30%", "40%", "40%", "auto")
         let path = this.createPath("M 8 2 L 2 20 L 8 38", 3)
         svg.appendChild(path)
         return svg
     }
 
     getToolsSvg() {
-        let svg = this.createSvg(0, 0, 12, 12, "40%", "40%", "20%", "auto")
+        let svg = this.createSvg(0, 0, 12, 12, "30%", "30%", "40%", "auto")
         svg.appendChild(this.createPath("M 2 2 L 10 2", 3))
         svg.appendChild(this.createPath("M 2 6 L 10 6", 3))
         svg.appendChild(this.createPath("M 2 10 L 10 10", 3))
