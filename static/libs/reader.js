@@ -1,5 +1,6 @@
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
 
+var NOT_IMPLEMENTED_EXCEPTION = "not implemented"
 var chronicReaderInstance = null
 
 var delayExecutionTriggerTimestamp = null
@@ -823,13 +824,28 @@ class EbookNode {
     }
 }
 
-class ZipWrapper {
+class ArchiveWrapper {
     constructor(url, bytes) {
         this.url = url
         this.data = bytes
     }
     getUrl() {
         return this.url
+    }
+    async getFiles() {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getBase64FileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getTextFileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+}
+
+class ZipWrapper extends ArchiveWrapper {
+    constructor(url, bytes) {
+        super(url, bytes)
     }
     async #getZip() {
         if (this.zip == undefined) {
@@ -858,6 +874,87 @@ class ZipWrapper {
     }
     async getTextFileContents(filename) {
         return this.#getFileContents(filename, "text")
+    }
+}
+
+class RarWrapper extends ArchiveWrapper {
+    constructor(url, bytes) {
+        super(url, bytes)
+    }
+    getUrl() {
+        return this.url
+    }
+    async #getRar() {
+        if (this.rar == undefined) {
+            var content = await this.data.arrayBuffer()
+            var rar = readRARContent([{
+                "name": "name.cbr",
+                "content": new Uint8Array(content)
+            }], null, null /*() => {
+                console.log("done reading rar")
+            }*/)
+            this.rar = rar
+        }
+        return this.rar
+    }
+    async getFiles() {
+        var rar = await this.#getRar()
+        //console.log(rar)
+        let files = Object.keys(rar.ls)
+        return files.sort()
+    }
+
+    #toBase64(dataArr){
+        var encoder = new TextEncoder("ascii");
+        var decoder = new TextDecoder("ascii");
+        var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
+    
+        var padding = dataArr.byteLength % 3;
+        var len = dataArr.byteLength - padding;
+        padding = padding > 0 ? (3 - padding) : 0;
+        var outputLen = ((len/3) * 4) + (padding > 0 ? 4 : 0);
+        var output = new Uint8Array(outputLen);
+        var outputCtr = 0;
+        for(var i=0; i<len; i+=3){              
+            var buffer = ((dataArr[i] & 0xFF) << 16) | ((dataArr[i+1] & 0xFF) << 8) | (dataArr[i+2] & 0xFF);
+            output[outputCtr++] = base64Table[buffer >> 18];
+            output[outputCtr++] = base64Table[(buffer >> 12) & 0x3F];
+            output[outputCtr++] = base64Table[(buffer >> 6) & 0x3F];
+            output[outputCtr++] = base64Table[buffer & 0x3F];
+        }
+        if (padding == 1) {
+            var buffer = ((dataArr[len] & 0xFF) << 8) | (dataArr[len+1] & 0xFF);
+            output[outputCtr++] = base64Table[buffer >> 10];
+            output[outputCtr++] = base64Table[(buffer >> 4) & 0x3F];
+            output[outputCtr++] = base64Table[(buffer << 2) & 0x3F];
+            output[outputCtr++] = base64Table[64];
+        } else if (padding == 2) {
+            var buffer = dataArr[len] & 0xFF;
+            output[outputCtr++] = base64Table[buffer >> 2];
+            output[outputCtr++] = base64Table[(buffer << 4) & 0x3F];
+            output[outputCtr++] = base64Table[64];
+            output[outputCtr++] = base64Table[64];
+        }
+        
+        var ret = decoder.decode(output);
+        output = null;
+        dataArr = null;
+        return ret;
+    }
+
+    async getBase64FileContents(filename) {
+        let rar = await this.#getRar()
+        let file = rar.ls[filename]
+        let fileContent = file.fileContent
+        //console.log(fileContent)
+        //var decoder = new TextDecoder('utf8')
+        //var b64encoded = btoa(decoder.decode(fileContent))
+        var b64encoded = this.#toBase64(fileContent)
+        return b64encoded
+    }
+
+    async getTextFileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
     }
 }
 
@@ -2728,6 +2825,9 @@ class ChronicReader {
         } else if (extension == "cbz") {
             type = "comic"
             archiveType = "zip"
+        } else if (extension == "cbr") {
+            type = "comic"
+            archiveType = "rar"
         }
         this.type = type
         if (type == "book") {
@@ -2741,6 +2841,8 @@ class ChronicReader {
             .then(blob => {
                 if (archiveType == "zip") {
                     return new ZipWrapper(this.url, blob)
+                } else if (archiveType == "rar") {
+                    return new RarWrapper(this.url, blob)
                 } else {
                     return null
                 }

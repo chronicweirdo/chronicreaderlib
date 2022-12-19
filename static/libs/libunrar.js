@@ -216,7 +216,7 @@ var readRARContent = function(data, password, callbackFn) {
 	var data = data
 	var password = password
 	var callbackFn = callbackFn
-	console.log("Current working directory: ",FS.cwd())
+	//console.log("Current working directory: ",FS.cwd())
 
 	var returnVal = []
 
@@ -240,7 +240,7 @@ var readRARContent = function(data, password, callbackFn) {
 			if(P2 === RAR_VOL_ASK) {
 				return -1
 			} else if(P2 === RAR_VOL_NOTIFY) {
-				console.log('... volume is :', Pointer_stringify(P1))
+				//console.log('... volume is :', Pointer_stringify(P1))
 				return 1
 			}
 			throw "Unknown P2 value in volume change event"
@@ -294,7 +294,7 @@ var readRARContent = function(data, password, callbackFn) {
 	
 	var ShowArcInfo = function(Flags) {
 		// console.log("\nArchive %s\n",ArcName);
-		console.log("Volume:\t\t%s",(Flags & 1) ? "yes":"no");
+		/*console.log("Volume:\t\t%s",(Flags & 1) ? "yes":"no");
 		console.log("Comment:\t%s",(Flags & 2) ? "yes":"no");
 		console.log("Locked:\t\t%s",(Flags & 4) ? "yes":"no");
 		console.log("Solid:\t\t%s",(Flags & 8) ? "yes":"no");
@@ -302,7 +302,7 @@ var readRARContent = function(data, password, callbackFn) {
 		console.log("Recovery:\t%s",(Flags & 64) ? "yes":"no");
 		console.log("Encr.headers:\t%s",(Flags & 128) ? "yes":"no");
 		console.log("First volume:\t%s",(Flags & 256) ? "yes":"no or older than 3.0");
-		console.log("---------------------------\n");		
+		console.log("---------------------------\n");		*/
 	}
 	
 	ShowArcInfo(arcData.get_Flags())
@@ -344,15 +344,15 @@ var readRARContent = function(data, password, callbackFn) {
 	
 	while(res === ERAR_SUCCESS){
 		currFileName = getFileName()
-		console.log('filename: ', currFileName);
+		//('filename: ', currFileName);
 		currFileSize = header.get_UnpSize()
 		currFileBuffer = new ArrayBuffer(currFileSize)
 		currFileBufferEnd = 0
 		
 		currFileFlags = header.get_Flags()
-		console.log("File continued from previous volume? ", currFileFlags&RHDF_SPLITBEFORE ?  'yes': 'no')
-		console.log("File continued on next volume? ", currFileFlags&RHDF_SPLITAFTER ? 'yes': 'no')
-		console.log("Previous files data is used (solid flag)? ", currFileFlags&RHDF_SOLID ? 'yes': 'no')
+		//("File continued from previous volume? ", currFileFlags&RHDF_SPLITBEFORE ?  'yes': 'no')
+		//console.log("File continued on next volume? ", currFileFlags&RHDF_SPLITAFTER ? 'yes': 'no')
+		//console.log("Previous files data is used (solid flag)? ", currFileFlags&RHDF_SOLID ? 'yes': 'no')
 		
 		// ***process file***
 		// use RAR_TEST instead of RAR_EXTRACT
@@ -374,7 +374,7 @@ var readRARContent = function(data, password, callbackFn) {
 		}
 		res = _RARReadHeaderEx(handle, getPointer(header));
 	}
-	console.log(res)
+	//console.log(res)
 	if(res !== ERAR_END_ARCHIVE){
 		cleanup()
 		reportReadHeaderError(res)
