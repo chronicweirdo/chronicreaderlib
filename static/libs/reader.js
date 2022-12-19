@@ -1327,9 +1327,10 @@ class Display {
     }
 
     getToolsSvg() {
-        let svg = this.createSvg(0, 0, 40, 10, "10%", "45%", "80%", "10%")
-        let path = this.createPath("M 2 8 L 20 2 L 38 8", 3)
-        svg.appendChild(path)
+        let svg = this.createSvg(0, 0, 12, 12, "40%", "40%", "20%", "auto")
+        svg.appendChild(this.createPath("M 2 2 L 10 2", 3))
+        svg.appendChild(this.createPath("M 2 6 L 10 6", 3))
+        svg.appendChild(this.createPath("M 2 10 L 10 10", 3))
         return svg
     }
 
