@@ -1439,13 +1439,20 @@ class Display {
             this.toolsMinimizeRight.style.display = "none"
             this.toolsMinimizeRight.style.zIndex = 1000
 
-            let displayToolsFunction = () => {
+            let displayToolsFunction = (alignedRight) => {
                 this.tools.style.display = "block"
                 this.toolsMinimizeLeft.style.display = "block"
                 this.toolsMinimizeRight.style.display = "block"
+                if (alignedRight) {
+                    this.tools.style.textAlign = "right"
+                    this.tools.style.direction = "rtl"
+                } else {
+                    this.tools.style.textAlign = "left"
+                    this.tools.style.direction = "ltr"
+                }
             }
-            this.toolsLeft.onclick = displayToolsFunction
-            this.toolsRight.onclick = displayToolsFunction
+            this.toolsLeft.onclick = () => displayToolsFunction(false)
+            this.toolsRight.onclick = () => displayToolsFunction(true)
             this.toolsMinimizeLeft.onclick = () => this.hideTools()
             this.toolsMinimizeRight.onclick = () => this.hideTools()
         }
