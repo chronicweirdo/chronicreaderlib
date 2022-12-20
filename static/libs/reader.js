@@ -1485,6 +1485,7 @@ class Display {
             item.appendChild(link)
             if (node.children && node.children.length > 0) {
                 let sublist = document.createElement("ul")
+                sublist.style.listStyleType = "none"
                 for (let i = 0; i < node.children.length; i++) {
                     let sublistItem = buildTocListFunction(node.children[i])
                     sublist.appendChild(sublistItem)
@@ -1504,14 +1505,22 @@ class Display {
                         button.innerHTML = "+"
                     }
                 }
-                item.appendChild(button)
+                item.prepend(button)
                 item.appendChild(sublist)
+            } else {
+                let button = document.createElement("span")
+                button.innerHTML = "-"
+                button.style.display = "inline-block"
+                button.style.padding = "5px"
+                item.prepend(button)
             }
             return item
         }
         let toc = await this.book.getToc()
         if (toc.length > 0) {
             let tocList = document.createElement("ul")
+            tocList.style.listStyleType = "none"
+            tocList.style.padding = "0"
             for (let i = 0; i < toc.length; i++) {
                 let item = buildTocListFunction(toc[i])
                 tocList.appendChild(item)
