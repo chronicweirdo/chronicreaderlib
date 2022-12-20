@@ -514,10 +514,10 @@ class EbookNode {
         }
     }
     
-    #nextNodeOfName(name) {
+    #nextNodeOfName(nodeNameRegex) {
         let current = this.#nextNode()
         while (current != null) {
-            if (current.name == name) return current
+            if (current.name && current.name.match(nodeNameRegex)) return current
             current = current.#nextNode()
         }
         return null
@@ -600,6 +600,18 @@ class EbookNode {
         }
             return currentNode
         }
+    }
+
+    findChapterEnd(position) {
+        var leaf = this.#leafAtPosition(position)
+        if (leaf) {
+            let nextHeader = leaf.#nextNodeOfName(/h[1-2]/)
+            if (nextHeader) {
+                console.log(nextHeader)
+                return nextHeader.start
+            }
+        }
+        return this.getDocumentEnd()
     }
 
     findSpaceAfter(position) {
@@ -1543,6 +1555,10 @@ class Display {
         increaseTextSizeButton.innerHTML = "zoomIn"
         increaseTextSizeButton.onclick = () => this.zoomIn()
         toolsContents.appendChild(increaseTextSizeButton)
+
+        this.progressDisplay = document.createElement("p")
+        this.progressDisplay.innerHTML = "remaining"
+        toolsContents.appendChild(this.progressDisplay)
         
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        
@@ -2540,6 +2556,11 @@ class EbookDisplay extends Display {
             await this.fixLinks(this.page, node.key)
             this.highlightTocPosition(position)
             this.hideLoading()
+            this.#getPagesLeftInChapter().then((pagesLeft) => {
+                if (this.progressDisplay) {
+                    this.progressDisplay.innerHTML = pagesLeft + " pages remaining in chapter"
+                }
+            })
             await this.#timeout(10)
             if (this.displayPageForCallback) {
                 this.displayPageForCallback(this)
@@ -2595,12 +2616,26 @@ class EbookDisplay extends Display {
         return this.pages[pageCacheKey]
     }
 
-    async #getPageFor(position) {
+    async #getPagesLeftInChapter() {
+        let currentPosition = this.position
+        let currentPage = await this.#getPageFor(currentPosition, true)
+        let node = await this.book.getNodeAt(currentPosition)
+        let nextChapterPosition = node.node.findChapterEnd(currentPosition)
+        let chapterEndPage = await this.#getPageFor(nextChapterPosition, true)
+        return chapterEndPage.index - currentPage.index
+    }
+
+    async #getPageFor(position, withIndex = false) {
         let pageCache = this.#getPagesCache()
-        let page = pageCache.getPageFor(position)      
+        let page = pageCache.getPageFor(position, withIndex)
         if (page == null) {
             let computedPage = await this.#computePageFor(position)
-            return computedPage
+            if (withIndex) {
+                let pageFromCache = pageCache.getPageFor(position, withIndex)
+                return pageFromCache
+            } else {
+                return computedPage
+            }
         } else {
             return page
         }
@@ -2681,6 +2716,7 @@ class Page {
     constructor(start, end) {
         this.start = start
         this.end = end
+        this.index = null
     }
 
     contains(position) {
@@ -2720,10 +2756,13 @@ class PageCache {
         this.value.push(page)
     }
 
-    getPageFor(position) {
+    getPageFor(position, withIndex = false) {
         if (this.value) {
             for (var i = 0; i < this.value.length; i++) {
-                if (this.value[i].contains(position)) return this.value[i]
+                if (this.value[i].contains(position)) {
+                    if (withIndex) this.value[i].index = i
+                    return this.value[i]
+                }
             }
         }
         return null
