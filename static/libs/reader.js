@@ -1557,6 +1557,7 @@ class Display {
         toolsContents.appendChild(increaseTextSizeButton)
 
         this.progressDisplay = document.createElement("p")
+        this.progressDisplay.style.direction = "ltr"
         this.progressDisplay.innerHTML = "remaining"
         toolsContents.appendChild(this.progressDisplay)
         
@@ -1908,6 +1909,11 @@ class ComicDisplay extends Display {
         this.#computeImageDominantColor()
         this.highlightTocPosition(position)
         this.hideLoading()
+        if (this.progressDisplay) {
+            let size = await this.book.getSize()
+            let message = "position " + this.position + " of " + size
+            this.progressDisplay.innerHTML = message
+        }
         if (this.displayPageForCallback) {
             this.displayPageForCallback(this)
         }
@@ -2556,11 +2562,12 @@ class EbookDisplay extends Display {
             await this.fixLinks(this.page, node.key)
             this.highlightTocPosition(position)
             this.hideLoading()
-            this.#getPagesLeftInChapter().then((pagesLeft) => {
-                if (this.progressDisplay) {
-                    this.progressDisplay.innerHTML = pagesLeft + " pages remaining in chapter"
-                }
-            })
+            if (this.progressDisplay) {
+                let pagesLeft = await this.#getPagesLeftInChapter()
+                let size = await this.book.getSize()
+                let message = " " + (pagesLeft) + " pages remaining in chapter, position " + this.position + " of " + this.book.size
+                    this.progressDisplay.innerHTML = message
+            }
             await this.#timeout(10)
             if (this.displayPageForCallback) {
                 this.displayPageForCallback(this)
