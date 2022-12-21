@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="static/libs/jszip.js"></script>
-    <script src="static/libs/reader.js"></script>
+    <script src="jszip.js"></script>
+    <script src="libunrar.js"></script>
+    <script src="reader.js"></script>
     <!--script src="https://github.com/chronicweirdo/chronicreaderlib/releases/download/v0.1/chronicreaderlib-0.1.min.js"></script-->
     
     <style>
@@ -20,9 +21,12 @@
     <div id="bookDisplayDiv" class="book"></div>
     <h2>Displaying a CBZ comic</h2>
     <div id="comicDisplayDiv" class="book"></div>
+    <h2>Displaying a CBR comic</h2>
+    <div id="cbrDisplayDiv" class="book"></div>
     <script>
-        var bookReader = new ChronicReader('static/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub', document.getElementById("bookDisplayDiv"))
-        var comicReader = new ChronicReader('static/books/Feature_Comics_111.cbz', document.getElementById("comicDisplayDiv"))
+        var bookReader = new ChronicReader('That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub', document.getElementById("bookDisplayDiv"))
+        var comicReader = new ChronicReader('Feature_Comics_111.cbz', document.getElementById("comicDisplayDiv"))
+        var cbrReader = new ChronicReader('RangerHouse.cbr', document.getElementById('cbrDisplayDiv'))
     </script>
 </body>
 </html>
