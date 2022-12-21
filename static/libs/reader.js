@@ -768,6 +768,26 @@ class EbookNode {
 }
 
 class ArchiveWrapper {
+    
+    static #getArchiveTypeFromContentType(contentType) {
+        if (contentType.includes("epub") || contentType.includes("zip") || contentType.includes("cbz")) {
+            return "zip"
+        } else if (contentType.includes("cbr") || contentType.includes("rar")) {
+            return "rar"
+        }
+    }
+
+    static factory(url, bytes, contentType) {
+        let archiveType = ArchiveWrapper.#getArchiveTypeFromContentType(contentType)
+        if (archiveType == "zip") {
+            return new ZipWrapper(url, bytes)
+        } else if (archiveType == "rar") {
+            return new RarWrapper(url, bytes)
+        } else {
+            return null
+        }
+    }
+
     constructor(url, bytes) {
         this.url = url
         this.data = bytes
@@ -897,6 +917,26 @@ class RarWrapper extends ArchiveWrapper {
 }
 
 class BookWrapper {
+
+    static #getBookTypeFromContentType(contentType) {
+        if (contentType.includes("epub")) {
+            return "book"
+        } else if (contentType.includes("cbz") || contentType.includes("cbr")) {
+            return "comic"
+        }
+    }
+
+    static factory(archive, contentType) {
+        let bookType = BookWrapper.#getBookTypeFromContentType(contentType)
+        if (bookType == "book") {
+            return new EbookWrapper(archive)
+        } else if (bookType == "comic") {
+            return new ComicWrapper(archive)
+        } else {
+            return null
+        }
+    }
+
     constructor(archive) {
         this.archive = archive
     }
@@ -1245,6 +1285,26 @@ class ColorMap {
 }
 
 class Display {
+
+    static #getBookTypeFromContentType(contentType) {
+        if (contentType.includes("epub")) {
+            return "book"
+        } else if (contentType.includes("cbz") || contentType.includes("cbr")) {
+            return "comic"
+        }
+    }
+
+    static factory(element, settings, contentType) {
+        let bookType = Display.#getBookTypeFromContentType(contentType)
+        if (bookType == "book") {
+            return new EbookDisplay(element, settings)
+        } else if (bookType == "comic") {
+            return new ComicDisplay(element, settings)
+        } else {
+            return null
+        }
+    }
+
     LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
     SVG_NAMESPACE = "http://www.w3.org/2000/svg"
     TOC_HIGHLIGHT_CLASS = "highlighted"
@@ -2851,50 +2911,14 @@ class ChronicReader {
         }
     }
 
-    #getArchiveTypeFromContentType(contentType) {
-        if (contentType.includes("epub") || contentType.includes("zip") || contentType.includes("cbz")) {
-            return "zip"
-        } else if (contentType.includes("cbr") || contentType.includes("rar")) {
-            return "rar"
-        }
-    }
-
-    #getBookTypeFromContentType(contentType) {
-        if (contentType.includes("epub")) {
-            return "book"
-        } else if (contentType.includes("cbz") || contentType.includes("cbr")) {
-            return "comic"
-        }
-    }
-
     async #init() {
         let response = await fetch(this.url)
-        let contentType = response.headers.get("content-type") + ""
-        console.log(contentType)
-        let type = this.#getBookTypeFromContentType(contentType)
-        let archiveType = this.#getArchiveTypeFromContentType(contentType)
+        let contentType = response.headers.get("content-type")
+        this.display = Display.factory(this.element, this.settings, contentType)
         let content = await response.blob()
 
-        let archiveWrapper = null
-        if (archiveType == "zip") {
-            archiveWrapper = new ZipWrapper(this.url, content)
-        } else if (archiveType == "rar") {
-            archiveWrapper = new RarWrapper(this.url, content)
-        }
-
-        let bookWrapper = null
-        if (type == "book") {
-            bookWrapper = new EbookWrapper(archiveWrapper)
-        } else if (type == "comic") {
-            bookWrapper = new ComicWrapper(archiveWrapper)
-        }
-
-        if (type == "book") {
-            this.display = new EbookDisplay(this.element, this.settings)
-        } else if (type == "comic") {
-            this.display = new ComicDisplay(this.element, this.settings)
-        }
-
+        let archiveWrapper = ArchiveWrapper.factory(this.url, content, contentType)
+        let bookWrapper = BookWrapper.factory(archiveWrapper, contentType)
         if (bookWrapper) {
             this.display.setBook(bookWrapper)
         }
