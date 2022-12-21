@@ -1825,14 +1825,6 @@ class ComicDisplay extends Display {
         }
     }
 
-    /*#getSwipeLength() {
-        return //0.06
-    }
-
-    #getSwipeAngleThreshold() {
-        return 30
-    }*/
-
     #getSwipeEnabled() {
         return true
     }
