@@ -7,7 +7,7 @@ var path = require('path')
 var http = require('http');
 const { runInNewContext } = require('vm');
 
-var staticBasePath = './static'
+var staticBasePath = './'
 
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
 function getFileMimeType(filename) {
