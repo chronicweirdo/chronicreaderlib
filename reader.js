@@ -1,5 +1,6 @@
 // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
 
+var NOT_IMPLEMENTED_EXCEPTION = "not implemented"
 var chronicReaderInstance = null
 
 var delayExecutionTriggerTimestamp = null
@@ -9,7 +10,6 @@ function executeWithDelay(func, ms) {
     let getExecuteWithDelayFunction = function(triggerTimestamp) {
         return () => {
             if (triggerTimestamp == delayExecutionTriggerTimestamp) {
-                //console.log("execute with delay for " + triggerTimestamp + " " + delayExecutionTriggerTimestamp)
                 func()
             }
         }
@@ -131,14 +131,7 @@ function createDivElement(parent, left, top, width, height, color) {
     return element
 }
 
-/*
-zip wrapper:
-- get list of files
-- get file contents as text or as bytes
-*/
-
 class EbookNode {
-    //static VOID_ELEMENTS = ["area","base","br","col","hr","img","input","link","meta","param","keygen","source","image","svg:image","?dp","?pagebreak","meta","item","?xml"]
     static LEAF_ELEMENTS = ["img", "tr", "image", "svg"]
 
     constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
@@ -155,7 +148,6 @@ class EbookNode {
                 console.log(error)
             }
         }
-        //this.#parseId()
     }
 
     static #parseAttributes(content) {
@@ -259,10 +251,6 @@ class EbookNode {
         return attributes
     }
 
-    /*static #isVoidElement(tagName) {
-        return tagName != null && tagName.startsWith("!--") || EbookNode.VOID_ELEMENTS.includes(tagName.toLowerCase())
-    }*/
-
     static #shouldBeLeafElement(tagName) {
         return tagName != null && EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
     }
@@ -276,7 +264,6 @@ class EbookNode {
     }
         
     static isBothTag(str) {
-        //return /^<[^>\/]+\/>$/.exec(str) != null
         return str.startsWith("<!--") 
             || (str.startsWith("<") && str.endsWith("/>"))
             || (str.startsWith("<?xml") && str.endsWith("?>"))
@@ -351,24 +338,12 @@ class EbookNode {
                     var name = EbookNode.#getTagName(content)
                     // can only be a tag
                     if (EbookNode.#isEndTag(content)) {
-                        // we check that this tag closes the current node correctly
-                        /*if (EbookNode.#isVoidElement(name)) {
-                            // the last child should have the correct name
-                            var lastChild = current.children[current.children.length - 1]
-                            if (name != lastChild.name) {
-                                throw "incompatible end " + name + " for void tag " + lastChild.name
-                            } else {
-                                lastChild.content += content
-                            }
-                        } else {*/
-                            // the current node should have the correct name, and it is getting closed
-                            if (name != current.name) {
-                                throw "incompatible end tag " + name + " for " + current.name
-                            }
-                            // move current node up
-                            current = current.parent
-                        /*}*/
-                    } else if (EbookNode.isBothTag(content) /*&& EbookNode.#isVoidElement(name)*/) {
+                        if (name != current.name) {
+                            throw "incompatible end tag " + name + " for " + current.name
+                        }
+                        // move current node up
+                        current = current.parent
+                    } else if (EbookNode.isBothTag(content)) {
                         // just add this tag without content
                         current.#addChild(new EbookNode(name, content))
                     } else {
@@ -401,50 +376,8 @@ class EbookNode {
             bodyNode.#collapseLeaves()
             bodyNode.#updatePositions(entrancePosition)
         }
-        /*if (filename != null && ebook != null) {
-            console.log("updating images")
-            await bodyNode.#updateImages(filename, ebook)
-        }*/
         return bodyNode
     }
-
-    /*static #isImage(tagName) {
-        return tagName.toLowerCase() == "img"
-    }*/
-    // go through structure and replace src of images with base64 from archive
-    /*async #updateImages(filename, ebook) {
-        if (this.name.toLowerCase == "img") {
-            let parser = new DOMParser()
-            let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
-            let imageElement = imageDocument.getElementsByTagName(this.name)[0]
-            let imagePath = imageElement.getAttribute("src")
-            try {
-                let base64 = await ebook.getImageBase64(filename, imagePath)
-                imageElement.setAttribute("src", base64)
-                this.content = imageElement.outerHTML
-            } catch (error) {
-                console.error("failed to load image base64: " + error)
-            }
-        } else if (this.name.toLowerCase == "image") {
-            let parser = new DOMParser()
-            let imageDocument = parser.parseFromString(this.getContent(), "text/xml")
-            let imageElement = imageDocument.getElementsByTagName(this.name)[0]
-            let imagePath = imageElement.getAttribute("xlink:href")
-            try {
-                let base64 = await ebook.getImageBase64(filename, imagePath)
-                imageElement.setAttribute("xlink:href", base64)
-                this.content = imageElement.outerHTML
-            } catch (error) {
-                console.error("failed to load image base64: " + error)
-            }
-        }
-        if (this.children.length > 0) {
-            for (var i = 0; i < this.children.length; i++) {
-                var child = this.children[i]
-                await child.#updateImages(filename, ebook)
-            }
-        }
-    }*/
 
     static #isLink(tagName) {
         return tagName.toLowerCase() == "a"
@@ -581,10 +514,10 @@ class EbookNode {
         }
     }
     
-    #nextNodeOfName(name) {
+    #nextNodeOfName(nodeNameRegex) {
         let current = this.#nextNode()
         while (current != null) {
-            if (current.name == name) return current
+            if (current.name && current.name.match(nodeNameRegex)) return current
             current = current.#nextNode()
         }
         return null
@@ -667,6 +600,17 @@ class EbookNode {
         }
             return currentNode
         }
+    }
+
+    findChapterEnd(position) {
+        var leaf = this.#leafAtPosition(position)
+        if (leaf) {
+            let nextHeader = leaf.#nextNodeOfName(/h[1-2]/)
+            if (nextHeader) {
+                return nextHeader.start
+            }
+        }
+        return this.getDocumentEnd()
     }
 
     findSpaceAfter(position) {
@@ -809,7 +753,7 @@ class EbookNode {
         }
     }
 
-    findChildrenWithTag(tagName, deep = true) {
+    findChildrenWithTag(tagName, deep = false) {
         let result = []
         for (let i = 0; i < this.children.length; i++) {
             if (this.children[i].name == tagName) {
@@ -823,13 +767,28 @@ class EbookNode {
     }
 }
 
-class ZipWrapper {
+class ArchiveWrapper {
     constructor(url, bytes) {
         this.url = url
         this.data = bytes
     }
     getUrl() {
         return this.url
+    }
+    async getFiles() {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getBase64FileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getTextFileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+}
+
+class ZipWrapper extends ArchiveWrapper {
+    constructor(url, bytes) {
+        super(url, bytes)
     }
     async #getZip() {
         if (this.zip == undefined) {
@@ -858,6 +817,82 @@ class ZipWrapper {
     }
     async getTextFileContents(filename) {
         return this.#getFileContents(filename, "text")
+    }
+}
+
+class RarWrapper extends ArchiveWrapper {
+    constructor(url, bytes) {
+        super(url, bytes)
+    }
+    getUrl() {
+        return this.url
+    }
+    async #getRar() {
+        if (this.rar == undefined) {
+            var content = await this.data.arrayBuffer()
+            console.log(this.url)
+            var rar = readRARContent([{
+                "name": "name.cbr",
+                "content": new Uint8Array(content)
+            }], null, null)
+            this.rar = rar
+        }
+        return this.rar
+    }
+    async getFiles() {
+        var rar = await this.#getRar()
+        let files = Object.keys(rar.ls)
+        return files.sort()
+    }
+
+    #toBase64(dataArr){
+        var encoder = new TextEncoder("ascii");
+        var decoder = new TextDecoder("ascii");
+        var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
+    
+        var padding = dataArr.byteLength % 3;
+        var len = dataArr.byteLength - padding;
+        padding = padding > 0 ? (3 - padding) : 0;
+        var outputLen = ((len/3) * 4) + (padding > 0 ? 4 : 0);
+        var output = new Uint8Array(outputLen);
+        var outputCtr = 0;
+        for(var i=0; i<len; i+=3){              
+            var buffer = ((dataArr[i] & 0xFF) << 16) | ((dataArr[i+1] & 0xFF) << 8) | (dataArr[i+2] & 0xFF);
+            output[outputCtr++] = base64Table[buffer >> 18];
+            output[outputCtr++] = base64Table[(buffer >> 12) & 0x3F];
+            output[outputCtr++] = base64Table[(buffer >> 6) & 0x3F];
+            output[outputCtr++] = base64Table[buffer & 0x3F];
+        }
+        if (padding == 1) {
+            var buffer = ((dataArr[len] & 0xFF) << 8) | (dataArr[len+1] & 0xFF);
+            output[outputCtr++] = base64Table[buffer >> 10];
+            output[outputCtr++] = base64Table[(buffer >> 4) & 0x3F];
+            output[outputCtr++] = base64Table[(buffer << 2) & 0x3F];
+            output[outputCtr++] = base64Table[64];
+        } else if (padding == 2) {
+            var buffer = dataArr[len] & 0xFF;
+            output[outputCtr++] = base64Table[buffer >> 2];
+            output[outputCtr++] = base64Table[(buffer << 4) & 0x3F];
+            output[outputCtr++] = base64Table[64];
+            output[outputCtr++] = base64Table[64];
+        }
+        
+        var ret = decoder.decode(output);
+        output = null;
+        dataArr = null;
+        return ret;
+    }
+
+    async getBase64FileContents(filename) {
+        let rar = await this.#getRar()
+        let file = rar.ls[filename]
+        let fileContent = file.fileContent
+        var b64encoded = this.#toBase64(fileContent)
+        return b64encoded
+    }
+
+    async getTextFileContents(filename) {
+        throw NOT_IMPLEMENTED_EXCEPTION
     }
 }
 
@@ -1212,59 +1247,48 @@ class ColorMap {
 class Display {
     LOADING_ANIMATION_STYLE_ID = "loadingAnimationStyle"
     SVG_NAMESPACE = "http://www.w3.org/2000/svg"
+    TOC_HIGHLIGHT_CLASS = "highlighted"
     constructor(element, settings) {
         this.element = element
-        this.configure(settings)
+        this.settings = settings
+        this.configure()
         this.buildUi()
         this.showLoading()
     }
 
     setBook(book) {
         this.book = book
-        if (this.showTools) {
+        if (this.settings.showTools) {
             this.buildToolsUi()
         }
     }
 
-    configure(settings) {
-        if (settings.position != undefined) {
-            this.position = settings.position
-        } else {
-            this.position = 0
+    setDefault(settingName, defaultValue) {
+        if (this.settings[settingName] == undefined) {
+            this.settings[settingName] = defaultValue
         }
-        if (settings.leftMarginPercent != undefined) {
-            this.leftMarginPercent = settings.leftMarginPercent
-        } else {
-            this.leftMarginPercent = 10
-        }
-        if (settings.topMarginPercent != undefined) {
-            this.topMarginPercent = settings.topMarginPercent
-        } else {
-            this.topMarginPercent = 5
-        }
-        if (settings.toolsButtonPercent != undefined) {
-            this.toolsButtonPercent = settings.toolsButtonPercent
-        } else {
-            this.toolsButtonPercent = 10
-        }
-        if (settings.displayControls != undefined) {
-            this.displayControls = settings.displayControls
-        } else {
-            this.displayControls = true
-        }
-        if (settings.controlsColor != undefined) {
-            this.controlsColor = settings.controlsColor
-        } else {
-            this.controlsColor = "#000000aa"
-        }
-        if (settings.displayPageForCallback != undefined) {
-            this.displayPageForCallback = settings.displayPageForCallback
-        }
-        if (settings.showTools != undefined) {
-            this.showTools = settings.showTools
-        } else {
-            this.showTools = true
-        }
+    }
+
+    configure() {
+        this.setDefault("position", 0)
+        this.setDefault("leftMarginPercent", 10)
+        this.setDefault("topMarginPercent", 5)
+        this.setDefault("toolsButtonPercent", 10)
+        this.setDefault("displayControls", true)
+        this.setDefault("controlsColor", "#000000")
+        //this.setDefault("displayPageForCallback", )
+        this.setDefault("showTools", true)
+        this.setDefault("swipeLength", 0.06)
+        this.setDefault("swipeAngleThreshold", 30)
+        this.setDefault("enableKeyboard", false)
+    }
+
+    getPosition() {
+        return this.settings.position
+    }
+
+    setPosition(position) {
+        return this.settings.position = position
     }
 
     createSvg(topX, topY, bottomX, bottomY, left, top, width, height) {
@@ -1288,23 +1312,24 @@ class Display {
     }
     
     getNextSvg() {
-        let svg = this.createSvg(0, 0, 10, 40, "40%", "45%", "20%", "10%")
+        let svg = this.createSvg(0, 0, 10, 40, "30%", "40%", "40%", "auto")
         let path = this.createPath("M 2 2 L 8 20 L 2 38", 3)
         svg.appendChild(path)
         return svg
     }
 
     getPreviousSvg() {
-        let svg = this.createSvg(0, 0, 10, 40, "40%", "45%", "20%", "10%")
+        let svg = this.createSvg(0, 0, 10, 40, "30%", "40%", "40%", "auto")
         let path = this.createPath("M 8 2 L 2 20 L 8 38", 3)
         svg.appendChild(path)
         return svg
     }
 
     getToolsSvg() {
-        let svg = this.createSvg(0, 0, 40, 10, "10%", "45%", "80%", "10%")
-        let path = this.createPath("M 2 8 L 20 2 L 38 8", 3)
-        svg.appendChild(path)
+        let svg = this.createSvg(0, 0, 12, 12, "30%", "30%", "40%", "auto")
+        svg.appendChild(this.createPath("M 2 2 L 10 2", 3))
+        svg.appendChild(this.createPath("M 2 6 L 10 6", 3))
+        svg.appendChild(this.createPath("M 2 10 L 10 10", 3))
         return svg
     }
 
@@ -1354,72 +1379,118 @@ class Display {
     }
 
     hideTools() {
-        if (this.showTools) {
+        if (this.settings.showTools) {
             this.tools.style.display = "none"
             this.toolsMinimizeLeft.style.display = "none"
             this.toolsMinimizeRight.style.display = "none"
         }
     }
 
+    #addControlHoverActions(element, svg) {
+        svg.style.opacity = .2
+        element.appendChild(svg)
+        element.onmouseover = () => svg.style.opacity = 1
+        element.onmouseout = () => svg.style.opacity = .2
+    }
+
     buildUi() {
-        if (this.showTools == false) {
-            this.toolsButtonPercent = 0
+        if (this.settings.showTools == false) {
+            this.settings.toolsButtonPercent = 0
         }
        
         this.element.innerHTML = ""
         this.page = document.createElement("img")
         this.page.style.position = "absolute"
         this.element.appendChild(this.page)
-        this.previous = createDivElement(this.element, 0, 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#ff000000")
-        if (this.displayControls) {
-            this.previous.appendChild(this.getPreviousSvg())
+        this.previous = createDivElement(this.element, 0, 0, (this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", "#ff000000")
+        if (this.settings.displayControls) {
+            this.#addControlHoverActions(this.previous, this.getPreviousSvg())
         }
         this.previous.onclick = () => { this.goToPreviousView() }
-        this.next = createDivElement(this.element, (100-this.leftMarginPercent) + "%", 0, (this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", "#00ff0000")
-        if (this.displayControls) {
-            this.next.appendChild(this.getNextSvg())
+        this.next = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, (this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", "#00ff0000")
+        if (this.settings.displayControls) {
+            this.#addControlHoverActions(this.next, this.getNextSvg())
         }
         this.next.onclick = () => { this.goToNextView() }
-        if (this.showTools) {
-            this.toolsLeft = createDivElement(this.element, 0, (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#ff00ff00")
-            if (this.displayControls) {
-                this.toolsLeft.appendChild(this.getToolsSvg())
+        let displayToolsFunction = null
+        if (this.settings.showTools) {
+            this.toolsLeft = createDivElement(this.element, 0, (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#ff00ff00")
+            if (this.settings.displayControls) {
+                this.#addControlHoverActions(this.toolsLeft, this.getToolsSvg())
             }
-            this.toolsRight = createDivElement(this.element, (100-this.leftMarginPercent) + "%", (100-this.toolsButtonPercent) + "%", this.leftMarginPercent + "%", this.toolsButtonPercent + "%", "#00ffff00")
-            if (this.displayControls) {
-                this.toolsRight.append(this.getToolsSvg())
+            this.toolsRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#00ffff00")
+            if (this.settings.displayControls) {
+                this.#addControlHoverActions(this.toolsRight, this.getToolsSvg())
             }
-        }
         
-        if (this.showTools) {
             this.toolsBackgroundColor = "#ffffffee"
-            this.tools = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100-this.leftMarginPercent*2) + "%", "100%", this.toolsBackgroundColor)
+            this.tools = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100-this.settings.leftMarginPercent*2) + "%", "100%", this.toolsBackgroundColor)
             this.tools.style.display = "none"
             this.tools.style.overflow = "scroll"
             this.tools.style.zIndex = 1000
 
-            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
             this.toolsMinimizeLeft.style.display = "none"
             this.toolsMinimizeLeft.style.zIndex = 1000
             
-            this.toolsMinimizeRight = createDivElement(this.element, (100-this.leftMarginPercent) + "%", 0, this.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
             this.toolsMinimizeRight.style.display = "none"
             this.toolsMinimizeRight.style.zIndex = 1000
 
-            let displayToolsFunction = () => {
+            displayToolsFunction = (alignedRight) => {
                 this.tools.style.display = "block"
                 this.toolsMinimizeLeft.style.display = "block"
                 this.toolsMinimizeRight.style.display = "block"
+                if (alignedRight) {
+                    this.tools.style.textAlign = "right"
+                    this.tools.style.direction = "rtl"
+                } else {
+                    this.tools.style.textAlign = "left"
+                    this.tools.style.direction = "ltr"
+                }
             }
-            this.toolsLeft.onclick = displayToolsFunction
-            this.toolsRight.onclick = displayToolsFunction
+            this.toolsLeft.onclick = () => displayToolsFunction(false)
+            this.toolsRight.onclick = () => displayToolsFunction(true)
             this.toolsMinimizeLeft.onclick = () => this.hideTools()
             this.toolsMinimizeRight.onclick = () => this.hideTools()
         }
-        this.loading = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
+        this.loading = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100 - 2 * this.settings.leftMarginPercent) + "%", "100%", "#ffffff00")
         this.loading.appendChild(this.getLoadingSvg())
-        if (this.displayControls) {
-            this.setControlsColor(this.controlsColor)
+        if (this.settings.displayControls) {
+            this.setControlsColor(this.settings.controlsColor)
+        }
+
+        if (this.settings.enableKeyboard) {
+            this.#enableKeyboardGestures({
+                "leftAction": () => this.goToPreviousView(),
+                "rightAction": () => this.goToNextView(),
+                "escapeAction": () => displayToolsFunction(false)
+            })
+        }
+    }
+
+    #enableKeyboardGestures(actions) {
+        document.onkeydown = function(e) {
+            if (e.keyCode == '38' || e.keyCode == '87') {
+                // up arrow or w
+                if (actions.upAction) actions.upAction()
+            }
+            else if (e.keyCode == '40' || e.keyCode == '83') {
+                // down arrow or s
+                if (actions.downAction) actions.downAction()
+            }
+            else if (e.keyCode == '37' || e.keyCode == '65') {
+                // left arrow or a
+                if (actions.leftAction) actions.leftAction()
+            }
+            else if (e.keyCode == '39' || e.keyCode == '68') {
+                // right arrow or d
+                if (actions.rightAction) actions.rightAction()
+            }
+            else if (e.keyCode == '27') {
+                // escape
+                if (actions.escapeAction) actions.escapeAction()
+            }
         }
     }
 
@@ -1444,6 +1515,7 @@ class Display {
             let item = document.createElement("li")
             let link = document.createElement("a")
             link.innerHTML = node.name
+            link.setAttribute("position", node.position)
             link.onclick = () => {
                 this.displayPageFor(node.position)
                 this.hideTools()
@@ -1451,6 +1523,7 @@ class Display {
             item.appendChild(link)
             if (node.children && node.children.length > 0) {
                 let sublist = document.createElement("ul")
+                sublist.style.listStyleType = "none"
                 for (let i = 0; i < node.children.length; i++) {
                     let sublistItem = buildTocListFunction(node.children[i])
                     sublist.appendChild(sublistItem)
@@ -1470,19 +1543,28 @@ class Display {
                         button.innerHTML = "+"
                     }
                 }
-                item.appendChild(button)
+                item.prepend(button)
                 item.appendChild(sublist)
+            } else {
+                let button = document.createElement("span")
+                button.innerHTML = "-"
+                button.style.display = "inline-block"
+                button.style.padding = "5px"
+                item.prepend(button)
             }
             return item
         }
         let toc = await this.book.getToc()
         if (toc.length > 0) {
             let tocList = document.createElement("ul")
+            tocList.style.listStyleType = "none"
+            tocList.style.padding = "0"
             for (let i = 0; i < toc.length; i++) {
                 let item = buildTocListFunction(toc[i])
                 tocList.appendChild(item)
             }
             toolsContents.appendChild(tocList)
+            this.tocElement = tocList
         }
         let decreaseTextSizeButton = document.createElement("a")
         decreaseTextSizeButton.innerHTML = "zoom out"
@@ -1492,9 +1574,48 @@ class Display {
         increaseTextSizeButton.innerHTML = "zoomIn"
         increaseTextSizeButton.onclick = () => this.zoomIn()
         toolsContents.appendChild(increaseTextSizeButton)
+
+        this.progressDisplay = document.createElement("p")
+        this.progressDisplay.style.direction = "ltr"
+        this.progressDisplay.innerHTML = "remaining"
+        toolsContents.appendChild(this.progressDisplay)
         
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        
+    }
+
+    tocFindParentLink(currentLink) {
+        if (currentLink.parentElement.tagName == "LI"
+            && currentLink.parentElement.parentElement.tagName == "UL"
+            && currentLink.parentElement.parentElement.parentElement.tagName == "LI") {
+            let links = currentLink.parentElement.parentElement.parentElement.getElementsByTagName("a")
+            if (links.length > 1) {
+                return links[0]
+            }
+        }
+        return null
+    }
+
+    highlightTocPosition(position) {
+        if (this.tocElement) {
+            let highlighted = Array.from(this.tocElement.getElementsByClassName(this.TOC_HIGHLIGHT_CLASS))
+            for (let i = 0; i < highlighted.length; i++) {
+                highlighted[i].classList.remove(this.TOC_HIGHLIGHT_CLASS)
+            }
+            let links = this.tocElement.getElementsByTagName("a")
+            for (let i = links.length - 1; i >= 0; i--) {
+                let linkPosition = Number.parseInt(links[i].getAttribute("position"))
+                if (linkPosition == position || linkPosition < position) {
+                    links[i].classList.add(this.TOC_HIGHLIGHT_CLASS)
+                    let parent = this.tocFindParentLink(links[i])
+                    while (parent != null) {
+                        parent.classList.add(this.TOC_HIGHLIGHT_CLASS)
+                        parent = this.tocFindParentLink(parent)
+                    }
+                    break
+                }
+            }
+        }
     }
 
     showLoading() {
@@ -1514,7 +1635,7 @@ class ComicDisplay extends Display {
 
     setBook(book) {
         super.setBook(book)
-        this.displayPageFor(this.position).then(() => this.#fitPageToScreen())
+        this.displayPageFor(this.getPosition()).then(() => this.#fitPageToScreen())
     }
 
     setControlsColor(color) {
@@ -1528,7 +1649,7 @@ class ComicDisplay extends Display {
     buildUi() {
         super.buildUi()
 
-        this.gestureControls = createDivElement(this.element, this.leftMarginPercent + "%", 0, (100 - 2 * this.leftMarginPercent) + "%", "100%", "#ffffff00")
+        this.gestureControls = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100 - 2 * this.settings.leftMarginPercent) + "%", "100%", "#ffffff00")
 
         let mouseGestureScroll = (scrollCenterX, scrollCenterY, scrollValue) => {
             var zoomDelta = 1 + scrollValue * this.#getScrollSpeed() * (this.#getInvertScroll() ? 1 : -1)
@@ -1704,14 +1825,6 @@ class ComicDisplay extends Display {
         }
     }
 
-    #getSwipeLength() {
-        return 0.06
-    }
-
-    #getSwipeAngleThreshold() {
-        return 30
-    }
-
     #getSwipeEnabled() {
         return true
     }
@@ -1719,9 +1832,9 @@ class ComicDisplay extends Display {
     /* returns true if pan should be disabled / when moving to a different page */
     #pan(x, y, totalDeltaX, totalDeltaY, pinching) {
         if (this.#getSwipeEnabled && (this.swipeNextPossible || this.swipePreviousPossible) && (!pinching)) {
-            let horizontalThreshold = this.#getViewportWidth() * this.#getSwipeLength()
+            let horizontalThreshold = this.#getViewportWidth() * this.settings.swipeLength
             let swipeParameters = computeSwipeParameters(totalDeltaX, totalDeltaY)
-            let verticalMoveValid = swipeParameters.angle < this.#getSwipeAngleThreshold()
+            let verticalMoveValid = swipeParameters.angle < this.settings.swipeAngleThreshold
             if (this.swipeNextPossible && x > 0 ) this.swipeNextPossible = false
             if (this.swipePreviousPossible && x < 0 ) this.swipePreviousPossible = false
             if (verticalMoveValid && totalDeltaX < -horizontalThreshold && this.swipeNextPossible) {
@@ -1795,19 +1908,32 @@ class ComicDisplay extends Display {
             cm.add(context.getImageData(x, this.page.naturalHeight-1, 1, 1))
         }
         let dominantColor = cm.getMostExpressed()
-        this.dominantColor = dominantColor
+        return dominantColor
     }
 
     async displayPageFor(position) {
         this.showLoading()
         let pageContent = await this.#getPageFor(position)
-        this.position = position
+        this.setPosition(position)
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
-        this.#computeImageDominantColor()
+        this.highlightTocPosition(position)
         this.hideLoading()
-        if (this.displayPageForCallback) {
-            this.displayPageForCallback(this)
+        if (this.progressDisplay) {
+            let size = await this.book.getSize()
+            let message = "position " + this.getPosition() + " of " + size
+            this.progressDisplay.innerHTML = message
+        }
+        if (this.settings.displayPageForCallback) {
+            this.settings.displayPageForCallback(this.#buildCallbackControls())
+        }
+    }
+
+    #buildCallbackControls() {
+        return {
+            "position": this.getPosition(),
+            "dominantColor": this.#computeImageDominantColor(),
+            "setControlsColor": (color) => this.setControlsColor(color)
         }
     }
 
@@ -1818,8 +1944,8 @@ class ComicDisplay extends Display {
 
     async nextPage() {
         let size = await this.book.getSize()
-        if (this.position < size - 1) {
-            this.displayPageFor(this.position + 1).then(() => {
+        if (this.getPosition() < size - 1) {
+            this.displayPageFor(this.getPosition() + 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -1830,8 +1956,8 @@ class ComicDisplay extends Display {
     }
 
     async previousPage() {
-        if (this.position > 0) {
-            this.displayPageFor(this.position - 1).then(() => {
+        if (this.getPosition() > 0) {
+            this.displayPageFor(this.getPosition() - 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -2029,12 +2155,12 @@ class EbookWrapper extends BookWrapper {
                 if (! documentNode) throw "failed to parse opf xml"
                 let metadataNode = documentNode.findChildrenWithTag("metadata", true).pop()
                 if (! metadataNode) throw "failed to find metadata node"
-                let metaNodes = metadataNode.findChildrenWithTag("meta")
+                let metaNodes = metadataNode.findChildrenWithTag("meta", true)
                 let coverMeta = metaNodes.find((node) => node.attributes && node.attributes["name"] == "cover")
                 if (! coverMeta) throw "failed to find cover meta entry"
                 let manifestNode = documentNode.findChildrenWithTag("manifest", true).pop()
                 if (! manifestNode) throw "failed to find manifest node"
-                let coverItem = manifestNode.findChildrenWithTag("item").find(item => item.attributes["id"] == coverMeta.attributes["content"])
+                let coverItem = manifestNode.findChildrenWithTag("item", true).find(item => item.attributes["id"] == coverMeta.attributes["content"])
                 let href = coverItem.attributes["href"]
                 let coverBase64 = await this.getImageBase64(opfFile, href)
                 this.cover = coverBase64
@@ -2234,7 +2360,7 @@ class EbookWrapper extends BookWrapper {
     async #fixImages(node, contextFilename) {
         const srcRegex = /src=\"([^\"]+)\"/
 
-        let images = node.findChildrenWithTag("img")// element.getElementsByTagName("img")
+        let images = node.findChildrenWithTag("img", true)
         for (let i = 0; i < images.length; i++) {
             let image = images[i]
             let imageContent = image.getContent()
@@ -2304,34 +2430,18 @@ class EbookDisplay extends Display {
 
     setBook(book) {
         super.setBook(book)
-        this.displayPageFor(this.position).then(() => {
+        this.displayPageFor(this.getPosition()).then(() => {
             this.triggerComputationForAllPages()
         })
     }
 
-    configure(settings) {
-        super.configure(settings)
+    configure() {
+        super.configure()
 
-        if (settings.initialTextSize != undefined) {
-            this.textSize = settings.initialTextSize
-        } else {
-            this.textSize = 1
-        }
-        if (settings.maximumTextSize != undefined) {
-            this.maximumTextSize = settings.maximumTextSize
-        } else {
-            this.maximumTextSize = 2
-        }
-        if (settings.minimumTextSize != undefined) {
-            this.minimumTextSize = settings.minimumTextSize
-        } else {
-            this.minimumTextSize = 0.5
-        }
-        if (settings.textSizeStep != undefined) {
-            this.textSizeStep = settings.textSizeStep
-        } else {
-            this.textSizeStep = 0.1
-        }
+        this.setDefault("initialTextSize", 1)
+        this.setDefault("maximumTextSize", 2)
+        this.setDefault("minimumTextSize", 0.5)
+        this.setDefault("textSizeStep", 0.1)
     }
 
     async #delayedRefresh(timestamp) {
@@ -2371,18 +2481,18 @@ class EbookDisplay extends Display {
 
     zoomIn() {
         let currentTextSize = this.textSize
-        let newTextSize = currentTextSize + this.textSizeStep
-        if (newTextSize > this.maximumTextSize) {
-            newTextSize = this.maximumTextSize
+        let newTextSize = currentTextSize + this.settings.textSizeStep
+        if (newTextSize > this.settings.maximumTextSize) {
+            newTextSize = this.settings.maximumTextSize
         }
         this.#setTextSize(newTextSize)
     }
 
     zoomOut() {
         let currentTextSize = this.textSize
-        let newTextSize = currentTextSize - this.textSizeStep
-        if (newTextSize < this.minimumTextSize) {
-            newTextSize = this.minimumTextSize
+        let newTextSize = currentTextSize - this.settings.textSizeStep
+        if (newTextSize < this.settings.minimumTextSize) {
+            newTextSize = this.settings.minimumTextSize
         }
         this.#setTextSize(newTextSize)
     }
@@ -2393,6 +2503,10 @@ class EbookDisplay extends Display {
         if (this.toolsLeft) this.toolsLeft.style.stroke = color
         if (this.toolsRight) this.toolsRight.style.stroke = color
         this.loading.style.stroke = color
+    }
+
+    #getViewportWidth() {
+        return this.page.offsetWidth
     }
 
     buildUi() {
@@ -2410,11 +2524,11 @@ class EbookDisplay extends Display {
             document.body.appendChild(ebookPageStyle)
         }
 
-        this.page = createDivElement(this.element, this.leftMarginPercent + "%", this.topMarginPercent + "%", (100 - 2 * this.leftMarginPercent) + "%", (100 - 2 * this.topMarginPercent) + "%", "#ffffff00")
+        this.page = createDivElement(this.element, this.settings.leftMarginPercent + "%", this.settings.topMarginPercent + "%", (100 - 2 * this.settings.leftMarginPercent) + "%", (100 - 2 * this.settings.topMarginPercent) + "%", "#ffffff00")
         this.page.classList.add("ebookPage")
         this.page.style.fontSize = this.textSize + "em"
         
-        this.shadowPage = createDivElement(this.element, this.leftMarginPercent + "%", this.topMarginPercent + "%", (100 - 2 * this.leftMarginPercent) + "%", (100 - 2 * this.topMarginPercent) + "%", "#ffffff")
+        this.shadowPage = createDivElement(this.element, this.settings.leftMarginPercent + "%", this.settings.topMarginPercent + "%", (100 - 2 * this.settings.leftMarginPercent) + "%", (100 - 2 * this.settings.topMarginPercent) + "%", "#ffffff")
         this.shadowPage.classList.add("ebookPage")
         this.shadowPage.style.fontSize = this.textSize + "em"
         this.shadowPage.style.visibility = "hidden"
@@ -2424,6 +2538,41 @@ class EbookDisplay extends Display {
         window.onresize = () => {
             executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
         }
+
+        let panX = 0
+        let panY = 0
+        let swipeStart = false
+        /*let SETTING_SWIPE_LENGTH = .1
+        let SETTING_SWIPE_ANGLE_THRESHOLD = 30*/
+        let touchGestureStartPan = (event) => {
+            if (event.touches.length == 1 && window.getSelection().type != "Range") {
+                panX = event.touches[0].pageX
+                panY = event.touches[0].pageY
+                swipeStart = true
+            }
+        }
+        let touchGesturePan = (event) => {
+            console.log(swipeStart)
+            if (event.touches.length == 1 && window.getSelection().type != "Range" && swipeStart) {
+                let newX = event.touches[0].pageX
+                let newY = event.touches[0].pageY
+                let deltaX = newX - panX
+                let deltaY = newY - panY
+                let swipeParameters = computeSwipeParameters(deltaX, deltaY)
+        
+                let horizontalThreshold = this.#getViewportWidth() * this.settings.swipeLength
+                let verticalMoveValid = swipeParameters.angle < this.settings.swipeAngleThreshold
+                if (verticalMoveValid && deltaX < -horizontalThreshold) {
+                    swipeStart = false
+                    this.goToNextView()
+                } else if (verticalMoveValid && deltaX > horizontalThreshold) {
+                    swipeStart = false
+                    this.goToPreviousView()
+                }
+            }
+        }
+        this.page.addEventListener('touchstart', touchGestureStartPan, false)
+        this.page.addEventListener('touchmove', touchGesturePan, false)
     }
 
     async fixLinks(element, contextFilename) {
@@ -2446,20 +2595,33 @@ class EbookDisplay extends Display {
         let page = await this.#getPageFor(position)
         if (page != null) {
             this.currentPage = page
-            this.position = this.currentPage.start
+            this.setPosition(this.currentPage.start)
             let node = await this.book.getNodeAt(page.start)
             this.page.innerHTML = await this.book.getContentsAt(page.start, page.end)
             // links need to be fixed on the actual final element
             // because an onclick event is configured on them
             await this.fixLinks(this.page, node.key)
+            this.highlightTocPosition(position)
             this.hideLoading()
+            if (this.progressDisplay) {
+                let pagesLeft = await this.#getPagesLeftInChapter()
+                let size = await this.book.getSize()
+                let message = " " + (pagesLeft) + " pages remaining in chapter, position " + this.getPosition() + " of " + this.book.size
+                    this.progressDisplay.innerHTML = message
+            }
             await this.#timeout(10)
-            if (this.displayPageForCallback) {
-                this.displayPageForCallback(this)
+            if (this.settings.displayPageForCallback) {
+                this.settings.displayPageForCallback(this.#buildCallbackControls())
             }
         }
         
         return page
+    }
+
+    #buildCallbackControls() {
+        return {
+            "position": this.getPosition()
+        }
     }
 
     async goToNextView() {
@@ -2508,12 +2670,26 @@ class EbookDisplay extends Display {
         return this.pages[pageCacheKey]
     }
 
-    async #getPageFor(position) {
+    async #getPagesLeftInChapter() {
+        let currentPosition = this.getPosition()
+        let currentPage = await this.#getPageFor(currentPosition, true)
+        let node = await this.book.getNodeAt(currentPosition)
+        let nextChapterPosition = node.node.findChapterEnd(currentPosition)
+        let chapterEndPage = await this.#getPageFor(nextChapterPosition, true)
+        return chapterEndPage.index - currentPage.index
+    }
+
+    async #getPageFor(position, withIndex = false) {
         let pageCache = this.#getPagesCache()
-        let page = pageCache.getPageFor(position)      
+        let page = pageCache.getPageFor(position, withIndex)
         if (page == null) {
             let computedPage = await this.#computePageFor(position)
-            return computedPage
+            if (withIndex) {
+                let pageFromCache = pageCache.getPageFor(position, withIndex)
+                return pageFromCache
+            } else {
+                return computedPage
+            }
         } else {
             return page
         }
@@ -2594,6 +2770,7 @@ class Page {
     constructor(start, end) {
         this.start = start
         this.end = end
+        this.index = null
     }
 
     contains(position) {
@@ -2633,10 +2810,13 @@ class PageCache {
         this.value.push(page)
     }
 
-    getPageFor(position) {
+    getPageFor(position, withIndex = false) {
         if (this.value) {
             for (var i = 0; i < this.value.length; i++) {
-                if (this.value[i].contains(position)) return this.value[i]
+                if (this.value[i].contains(position)) {
+                    if (withIndex) this.value[i].index = i
+                    return this.value[i]
+                }
             }
         }
         return null
@@ -2671,14 +2851,6 @@ class ChronicReader {
         }
     }
 
-    /*#getInitialPosition() {
-        if (this.settings.position) {
-            return this.settings.position
-        } else {
-            return 0
-        }
-    }*/
-
     #init() {
         let extension = getFileExtension(this.url)
         let type = ""
@@ -2689,6 +2861,9 @@ class ChronicReader {
         } else if (extension == "cbz") {
             type = "comic"
             archiveType = "zip"
+        } else if (extension == "cbr") {
+            type = "comic"
+            archiveType = "rar"
         }
         this.type = type
         if (type == "book") {
@@ -2702,6 +2877,8 @@ class ChronicReader {
             .then(blob => {
                 if (archiveType == "zip") {
                     return new ZipWrapper(this.url, blob)
+                } else if (archiveType == "rar") {
+                    return new RarWrapper(this.url, blob)
                 } else {
                     return null
                 }
