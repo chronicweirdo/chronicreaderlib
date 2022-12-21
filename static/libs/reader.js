@@ -607,7 +607,6 @@ class EbookNode {
         if (leaf) {
             let nextHeader = leaf.#nextNodeOfName(/h[1-2]/)
             if (nextHeader) {
-                console.log(nextHeader)
                 return nextHeader.start
             }
         }
@@ -1263,22 +1262,33 @@ class Display {
         }
     }
 
+    setSetting(settings, settingName, defaultValue) {
+        if (settings[settingName] != undefined) {
+            this[settingName] = settings[settingName]
+        } else {
+            this[settingName] = defaultValue
+        }
+    }
+
     configure(settings) {
-        if (settings.position != undefined) {
+        this.setSetting(settings, "position", 0)
+        /*if (settings.position != undefined) {
             this.position = settings.position
         } else {
             this.position = 0
-        }
-        if (settings.leftMarginPercent != undefined) {
+        }*/
+        this.setSetting(settings, "leftMarginPercent", 10)
+        /*if (settings.leftMarginPercent != undefined) {
             this.leftMarginPercent = settings.leftMarginPercent
         } else {
             this.leftMarginPercent = 10
-        }
-        if (settings.topMarginPercent != undefined) {
+        }*/
+        this.setSetting(settings, "topMarginPercent", 5)
+        /*if (settings.topMarginPercent != undefined) {
             this.topMarginPercent = settings.topMarginPercent
         } else {
             this.topMarginPercent = 5
-        }
+        }*/
         if (settings.toolsButtonPercent != undefined) {
             this.toolsButtonPercent = settings.toolsButtonPercent
         } else {
@@ -1302,6 +1312,12 @@ class Display {
         } else {
             this.showTools = true
         }
+        if (settings.swipeLength != undefined) {
+            this.swipeLength = settings.swipeLength
+        } else {
+            this.swipeLength = 0.06
+        }
+        //if (settings.swipeAngleThreshold)
     }
 
     createSvg(topX, topY, bottomX, bottomY, left, top, width, height) {
@@ -1807,7 +1823,7 @@ class ComicDisplay extends Display {
     }
 
     #getSwipeLength() {
-        return 0.06
+        return //0.06
     }
 
     #getSwipeAngleThreshold() {
@@ -2503,6 +2519,10 @@ class EbookDisplay extends Display {
         this.loading.style.stroke = color
     }
 
+    #getViewportWidth() {
+        return this.page.offsetWidth
+    }
+
     buildUi() {
         super.buildUi()
 
@@ -2532,6 +2552,41 @@ class EbookDisplay extends Display {
         window.onresize = () => {
             executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
         }
+
+        let panX = 0
+        let panY = 0
+        let swipeStart = false
+        let SETTING_SWIPE_LENGTH = .1
+        let SETTING_SWIPE_ANGLE_THRESHOLD = 30
+        let touchGestureStartPan = (event) => {
+            if (event.touches.length == 1 && window.getSelection().type != "Range") {
+                panX = event.touches[0].pageX
+                panY = event.touches[0].pageY
+                swipeStart = true
+            }
+        }
+        let touchGesturePan = (event) => {
+            console.log(swipeStart)
+            if (event.touches.length == 1 && window.getSelection().type != "Range" && swipeStart) {
+                let newX = event.touches[0].pageX
+                let newY = event.touches[0].pageY
+                let deltaX = newX - panX
+                let deltaY = newY - panY
+                let swipeParameters = computeSwipeParameters(deltaX, deltaY)
+        
+                let horizontalThreshold = this.#getViewportWidth() * SETTING_SWIPE_LENGTH
+                let verticalMoveValid = swipeParameters.angle < SETTING_SWIPE_ANGLE_THRESHOLD
+                if (verticalMoveValid && deltaX < -horizontalThreshold) {
+                    swipeStart = false
+                    this.goToNextView()
+                } else if (verticalMoveValid && deltaX > horizontalThreshold) {
+                    swipeStart = false
+                    this.goToPreviousView()
+                }
+            }
+        }
+        this.page.addEventListener('touchstart', touchGestureStartPan, false)
+        this.page.addEventListener('touchmove', touchGesturePan, false)
     }
 
     async fixLinks(element, contextFilename) {
