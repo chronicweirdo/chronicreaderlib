@@ -2851,50 +2851,53 @@ class ChronicReader {
         }
     }
 
-    #init() {
-        let extension = getFileExtension(this.url)
-        let type = ""
-        let archiveType = ""
-        if (extension == "epub") {
-            type = "book"
-            archiveType = "zip"
-        } else if (extension == "cbz") {
-            type = "comic"
-            archiveType = "zip"
-        } else if (extension == "cbr") {
-            type = "comic"
-            archiveType = "rar"
+    #getArchiveTypeFromContentType(contentType) {
+        if (contentType.includes("epub") || contentType.includes("zip") || contentType.includes("cbz")) {
+            return "zip"
+        } else if (contentType.includes("cbr") || contentType.includes("rar")) {
+            return "rar"
         }
-        this.type = type
+    }
+
+    #getBookTypeFromContentType(contentType) {
+        if (contentType.includes("epub")) {
+            return "book"
+        } else if (contentType.includes("cbz") || contentType.includes("cbr")) {
+            return "comic"
+        }
+    }
+
+    async #init() {
+        let response = await fetch(this.url)
+        let contentType = response.headers.get("content-type") + ""
+        console.log(contentType)
+        let type = this.#getBookTypeFromContentType(contentType)
+        let archiveType = this.#getArchiveTypeFromContentType(contentType)
+        let content = await response.blob()
+
+        let archiveWrapper = null
+        if (archiveType == "zip") {
+            archiveWrapper = new ZipWrapper(this.url, content)
+        } else if (archiveType == "rar") {
+            archiveWrapper = new RarWrapper(this.url, content)
+        }
+
+        let bookWrapper = null
+        if (type == "book") {
+            bookWrapper = new EbookWrapper(archiveWrapper)
+        } else if (type == "comic") {
+            bookWrapper = new ComicWrapper(archiveWrapper)
+        }
+
         if (type == "book") {
             this.display = new EbookDisplay(this.element, this.settings)
         } else if (type == "comic") {
             this.display = new ComicDisplay(this.element, this.settings)
         }
 
-        fetch(this.url)
-            .then(res => res.blob())
-            .then(blob => {
-                if (archiveType == "zip") {
-                    return new ZipWrapper(this.url, blob)
-                } else if (archiveType == "rar") {
-                    return new RarWrapper(this.url, blob)
-                } else {
-                    return null
-                }
-            }).then(archive => {
-                if (type == "book") {
-                    return new EbookWrapper(archive)
-                } else if (type == "comic") {
-                    return new ComicWrapper(archive)
-                } else {
-                    return null
-                }
-            }).then(wrapper => {
-                if (wrapper) {
-                    this.display.setBook(wrapper)
-                }
-            })
+        if (bookWrapper) {
+            this.display.setBook(bookWrapper)
+        }
     }
 
     displayPageFor(position) {
