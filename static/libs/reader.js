@@ -1280,6 +1280,7 @@ class Display {
         this.setDefault("showTools", true)
         this.setDefault("swipeLength", 0.06)
         this.setDefault("swipeAngleThreshold", 30)
+        this.setDefault("enableKeyboard", false)
     }
 
     getPosition() {
@@ -1393,7 +1394,6 @@ class Display {
     }
 
     buildUi() {
-        console.log(this.settings)
         if (this.settings.showTools == false) {
             this.settings.toolsButtonPercent = 0
         }
@@ -1412,6 +1412,7 @@ class Display {
             this.#addControlHoverActions(this.next, this.getNextSvg())
         }
         this.next.onclick = () => { this.goToNextView() }
+        let displayToolsFunction = null
         if (this.settings.showTools) {
             this.toolsLeft = createDivElement(this.element, 0, (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#ff00ff00")
             if (this.settings.displayControls) {
@@ -1436,7 +1437,7 @@ class Display {
             this.toolsMinimizeRight.style.display = "none"
             this.toolsMinimizeRight.style.zIndex = 1000
 
-            let displayToolsFunction = (alignedRight) => {
+            displayToolsFunction = (alignedRight) => {
                 this.tools.style.display = "block"
                 this.toolsMinimizeLeft.style.display = "block"
                 this.toolsMinimizeRight.style.display = "block"
@@ -1457,6 +1458,39 @@ class Display {
         this.loading.appendChild(this.getLoadingSvg())
         if (this.settings.displayControls) {
             this.setControlsColor(this.settings.controlsColor)
+        }
+
+        if (this.settings.enableKeyboard) {
+            this.#enableKeyboardGestures({
+                "leftAction": () => this.goToPreviousView(),
+                "rightAction": () => this.goToNextView(),
+                "escapeAction": () => displayToolsFunction(false)
+            })
+        }
+    }
+
+    #enableKeyboardGestures(actions) {
+        document.onkeydown = function(e) {
+            if (e.keyCode == '38' || e.keyCode == '87') {
+                // up arrow or w
+                if (actions.upAction) actions.upAction()
+            }
+            else if (e.keyCode == '40' || e.keyCode == '83') {
+                // down arrow or s
+                if (actions.downAction) actions.downAction()
+            }
+            else if (e.keyCode == '37' || e.keyCode == '65') {
+                // left arrow or a
+                if (actions.leftAction) actions.leftAction()
+            }
+            else if (e.keyCode == '39' || e.keyCode == '68') {
+                // right arrow or d
+                if (actions.rightAction) actions.rightAction()
+            }
+            else if (e.keyCode == '27') {
+                // escape
+                if (actions.escapeAction) actions.escapeAction()
+            }
         }
     }
 
