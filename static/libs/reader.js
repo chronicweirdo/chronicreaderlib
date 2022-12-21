@@ -1916,7 +1916,7 @@ class ComicDisplay extends Display {
             cm.add(context.getImageData(x, this.page.naturalHeight-1, 1, 1))
         }
         let dominantColor = cm.getMostExpressed()
-        this.dominantColor = dominantColor
+        return dominantColor
     }
 
     async displayPageFor(position) {
@@ -1925,7 +1925,6 @@ class ComicDisplay extends Display {
         this.setPosition(position)
         this.page.src = pageContent
         await imageLoadedPromise(this.page)
-        this.#computeImageDominantColor()
         this.highlightTocPosition(position)
         this.hideLoading()
         if (this.progressDisplay) {
@@ -1934,7 +1933,14 @@ class ComicDisplay extends Display {
             this.progressDisplay.innerHTML = message
         }
         if (this.settings.displayPageForCallback) {
-            this.settings.displayPageForCallback(this)
+            this.settings.displayPageForCallback(this.#buildCallbackControls())
+        }
+    }
+
+    #buildCallbackControls() {
+        return {
+            "dominantColor": this.#computeImageDominantColor(),
+            "setControlsColor": (color) => this.setControlsColor(color)
         }
     }
 
@@ -2612,7 +2618,7 @@ class EbookDisplay extends Display {
             }
             await this.#timeout(10)
             if (this.settings.displayPageForCallback) {
-                this.settings.displayPageForCallback(this)
+                this.settings.displayPageForCallback({})
             }
         }
         
