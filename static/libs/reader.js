@@ -1931,6 +1931,7 @@ class ComicDisplay extends Display {
 
     #buildCallbackControls() {
         return {
+            "position": this.getPosition(),
             "dominantColor": this.#computeImageDominantColor(),
             "setControlsColor": (color) => this.setControlsColor(color)
         }
@@ -2610,11 +2611,17 @@ class EbookDisplay extends Display {
             }
             await this.#timeout(10)
             if (this.settings.displayPageForCallback) {
-                this.settings.displayPageForCallback({})
+                this.settings.displayPageForCallback(this.#buildCallbackControls())
             }
         }
         
         return page
+    }
+
+    #buildCallbackControls() {
+        return {
+            "position": this.getPosition()
+        }
     }
 
     async goToNextView() {
