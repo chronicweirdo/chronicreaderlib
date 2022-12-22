@@ -768,20 +768,11 @@ class EbookNode {
 }
 
 class ArchiveWrapper {
-    
-    static #getArchiveTypeFromContentType(contentType) {
-        if (contentType.includes("epub") || contentType.includes("zip") || contentType.includes("cbz")) {
-            return "zip"
-        } else if (contentType.includes("cbr") || contentType.includes("rar")) {
-            return "rar"
-        }
-    }
 
-    static factory(url, bytes, contentType) {
-        let archiveType = ArchiveWrapper.#getArchiveTypeFromContentType(contentType)
-        if (archiveType == "zip") {
+    static factory(url, bytes, extension) {
+        if (extension == "epub" || extension == "cbz") {
             return new ZipWrapper(url, bytes)
-        } else if (archiveType == "rar") {
+        } else if (extension == "cbr") {
             return new RarWrapper(url, bytes)
         } else {
             return null
@@ -918,19 +909,10 @@ class RarWrapper extends ArchiveWrapper {
 
 class BookWrapper {
 
-    static #getBookTypeFromContentType(contentType) {
-        if (contentType.includes("epub")) {
-            return "book"
-        } else if (contentType.includes("cbz") || contentType.includes("cbr")) {
-            return "comic"
-        }
-    }
-
-    static factory(archive, contentType) {
-        let bookType = BookWrapper.#getBookTypeFromContentType(contentType)
-        if (bookType == "book") {
+    static factory(archive, extension) {
+        if (extension == "epub") {
             return new EbookWrapper(archive)
-        } else if (bookType == "comic") {
+        } else if (extension == "cbz" || extension == "cbr") {
             return new ComicWrapper(archive)
         } else {
             return null
@@ -1286,19 +1268,10 @@ class ColorMap {
 
 class Display {
 
-    static #getBookTypeFromContentType(contentType) {
-        if (contentType.includes("epub")) {
-            return "book"
-        } else if (contentType.includes("cbz") || contentType.includes("cbr")) {
-            return "comic"
-        }
-    }
-
-    static factory(element, settings, contentType) {
-        let bookType = Display.#getBookTypeFromContentType(contentType)
-        if (bookType == "book") {
+    static factory(element, settings, extension) {
+        if (extension == "epub") {
             return new EbookDisplay(element, settings)
-        } else if (bookType == "comic") {
+        } else if (extension == "cbz" || extension == "cbr") {
             return new ComicDisplay(element, settings)
         } else {
             return null
@@ -1957,6 +1930,7 @@ class ComicDisplay extends Display {
         canvas.width = this.page.naturalWidth
         canvas.height = this.page.naturalHeight
         const context = canvas.getContext('2d')
+        context.set
         context.drawImage(this.page, 0, 0, this.page.naturalWidth, this.page.naturalHeight);
         let cm = new ColorMap()
         for (let y = 0; y < this.page.naturalHeight; y++) {
@@ -2896,9 +2870,14 @@ class PageCache {
 }
 
 class ChronicReader {
-    constructor(url, element, settings = {}) {
+    constructor(url, element, extension = null, settings = {}) {
         this.url = url
         this.element = element
+        if (extension == null) {
+            this.extension = getFileExtension(this.url)
+        } else {
+            this.extension = extension
+        }
         this.settings = settings
         this.#init()
         chronicReaderInstance = this
@@ -2913,12 +2892,11 @@ class ChronicReader {
 
     async #init() {
         let response = await fetch(this.url)
-        let contentType = response.headers.get("content-type")
-        this.display = Display.factory(this.element, this.settings, contentType)
+        this.display = Display.factory(this.element, this.settings, this.extension)
         let content = await response.blob()
 
-        let archiveWrapper = ArchiveWrapper.factory(this.url, content, contentType)
-        let bookWrapper = BookWrapper.factory(archiveWrapper, contentType)
+        let archiveWrapper = ArchiveWrapper.factory(this.url, content, this.extension)
+        let bookWrapper = BookWrapper.factory(archiveWrapper, this.extension)
         if (bookWrapper) {
             this.display.setBook(bookWrapper)
         }
