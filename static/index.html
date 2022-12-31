@@ -37,6 +37,7 @@
             reader = new ChronicReader(
                 urls[index], 
                 document.getElementById("page"),
+                getFileExtension(urls[index]),
                 {
                     "position": positions[index],
                     "displayPageForCallback": displayPageCallback,

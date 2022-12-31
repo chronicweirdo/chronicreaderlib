@@ -2418,7 +2418,6 @@ class EbookWrapper extends BookWrapper {
     }
 
     async #fixImages(node, contextFilename) {
-        console.log("fixing images")
         const srcRegex = /src=\"([^\"]+)\"/
 
         let images = node.findChildrenWithTag("img", true)
@@ -2440,8 +2439,6 @@ class EbookWrapper extends BookWrapper {
 
         const svgHrefRegex = /xlink:href=\"([^\"]+)\"/g
         let svgs = node.findChildrenWithTag("svg", true)
-        console.log("svgs")
-        console.log(svgs)
         for (let i = 0; i < svgs.length; i++) {
             let svg = svgs[i]
             let svgContent = svg.getContent()
@@ -2937,5 +2934,3 @@ class ChronicReader {
         }
     }
 }
-
-//export { ChronicReader }
