@@ -1324,6 +1324,7 @@ class Display {
         this.setDefault("swipeLength", 0.06)
         this.setDefault("swipeAngleThreshold", 30)
         this.setDefault("enableKeyboard", false)
+        this.setDefault("toolsContents", ["cover", "toc", "zoom", "progress"])
     }
 
     getPosition() {
@@ -1538,14 +1539,7 @@ class Display {
         }
     }
 
-    async buildToolsUi() {
-        let toolsContents = document.createElement("div")
-        toolsContents.classList.add("ebookPage")
-        toolsContents.style.position = "absolute"
-        toolsContents.style.top = 0
-        toolsContents.style.left = 0
-        toolsContents.style.width = "100%"
-
+    async addCoverToToolsUi(toolsContents) {
         // add cover
         let coverBase64 = await this.book.getCover()
         if (coverBase64) {
@@ -1553,7 +1547,9 @@ class Display {
             coverElement.src = coverBase64
             toolsContents.appendChild(coverElement)
         }
-        
+    }
+
+    async addTocToToolsUi(toolsContents) {
         // add toc
         let buildTocListFunction = (node) => {
             let item = document.createElement("li")
@@ -1612,6 +1608,9 @@ class Display {
             toolsContents.appendChild(tocList)
             this.tocElement = tocList
         }
+    }
+
+    async addZoomToToolsContents(toolsContents) {
         let decreaseTextSizeButton = document.createElement("a")
         decreaseTextSizeButton.innerHTML = "zoom out"
         decreaseTextSizeButton.onclick = () => this.zoomOut()
@@ -1620,11 +1619,41 @@ class Display {
         increaseTextSizeButton.innerHTML = "zoom in"
         increaseTextSizeButton.onclick = () => this.zoomIn()
         toolsContents.appendChild(increaseTextSizeButton)
+    }
 
+    async addProgressToToolsContents(toolsContents) {
         this.progressDisplay = document.createElement("p")
         this.progressDisplay.style.direction = "ltr"
         this.progressDisplay.innerHTML = "remaining"
         toolsContents.appendChild(this.progressDisplay)
+    }
+
+    async buildToolsUi() {
+        let toolsContents = document.createElement("div")
+        toolsContents.classList.add("ebookPage")
+        toolsContents.style.position = "absolute"
+        toolsContents.style.top = 0
+        toolsContents.style.left = 0
+        toolsContents.style.width = "100%"
+
+        console.log(this.settings.toolsContents)
+        for (let content of this.settings.toolsContents) {
+            if (content == "cover") {
+                await this.addCoverToToolsUi(toolsContents)
+            } else if (content == "toc") {
+                await this.addTocToToolsUi(toolsContents)
+            } else if (content == "zoom") {
+                await this.addZoomToToolsContents(toolsContents)
+            } else if (content == "progress") {
+                await this.addProgressToToolsContents(toolsContents)
+            } else {
+                //custom content
+                if (typeof content == "function") {
+                    let element = await content()
+                    toolsContents.appendChild(element)
+                }
+            }
+        }
         
         this.tools.innerHTML = ""
         this.tools.appendChild(toolsContents)        

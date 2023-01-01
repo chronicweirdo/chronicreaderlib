@@ -41,7 +41,24 @@
                 {
                     "position": positions[index],
                     "displayPageForCallback": displayPageCallback,
-                    "enableKeyboard": true
+                    "enableKeyboard": true,
+                    "toolsContents": ["toc", "cover", "zoom", "progress",
+                        () => {
+                            let p = document.createElement("p")
+
+                            let prev = document.createElement("a")
+                            prev.innerHTML = "previous"
+                            prev.onclick = () => displayPreviousBook()
+                            p.appendChild(prev)
+
+                            let next = document.createElement("a")
+                            next.innerHTML = "next"
+                            next.onclick = () => displayNextBook()
+                            p.appendChild(next)
+
+                            return p
+                        }
+                    ]
                 }
             )
         }
@@ -49,6 +66,13 @@
             index = index + 1
             if (index >= urls.length) {
                 index = 0
+            }
+            displayBook()
+        }
+        function displayPreviousBook() {
+            index = index - 1
+            if (index < 0) {
+                index = urls.length - 1
             }
             displayBook()
         }
