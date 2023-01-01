@@ -1617,7 +1617,7 @@ class Display {
         decreaseTextSizeButton.onclick = () => this.zoomOut()
         toolsContents.appendChild(decreaseTextSizeButton)
         let increaseTextSizeButton = document.createElement("a")
-        increaseTextSizeButton.innerHTML = "zoomIn"
+        increaseTextSizeButton.innerHTML = "zoom in"
         increaseTextSizeButton.onclick = () => this.zoomIn()
         toolsContents.appendChild(increaseTextSizeButton)
 
@@ -2504,7 +2504,7 @@ class EbookDisplay extends Display {
     configure() {
         super.configure()
 
-        this.setDefault("initialTextSize", 1)
+        this.setDefault("textSize", 1)
         this.setDefault("maximumTextSize", 2)
         this.setDefault("minimumTextSize", 0.5)
         this.setDefault("textSizeStep", 0.1)
@@ -2539,14 +2539,17 @@ class EbookDisplay extends Display {
     }
 
     #setTextSize(value) {
-        this.textSize = value
-        this.page.style.fontSize = this.textSize + "em"
-        this.shadowPage.style.fontSize = this.textSize + "em"
-        this.displayPageFor(this.currentPage.start)
+        this.settings.textSize = value
+        this.page.style.fontSize = this.settings.textSize + "em"
+        this.shadowPage.style.fontSize = this.settings.textSize + "em"
+        this.#timeout(1000).then(() => {
+            console.log("recomputing for text size " + this.settings.textSize)
+            this.displayPageFor(this.currentPage.start)
+        })
     }
 
     zoomIn() {
-        let currentTextSize = this.textSize
+        let currentTextSize = this.settings.textSize
         let newTextSize = currentTextSize + this.settings.textSizeStep
         if (newTextSize > this.settings.maximumTextSize) {
             newTextSize = this.settings.maximumTextSize
@@ -2555,7 +2558,7 @@ class EbookDisplay extends Display {
     }
 
     zoomOut() {
-        let currentTextSize = this.textSize
+        let currentTextSize = this.settings.textSize
         let newTextSize = currentTextSize - this.settings.textSizeStep
         if (newTextSize < this.settings.minimumTextSize) {
             newTextSize = this.settings.minimumTextSize
