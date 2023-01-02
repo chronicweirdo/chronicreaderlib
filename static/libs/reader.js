@@ -1,5 +1,3 @@
-// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-
 var NOT_IMPLEMENTED_EXCEPTION = "not implemented"
 var chronicReaderInstance = null
 
