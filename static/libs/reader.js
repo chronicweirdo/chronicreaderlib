@@ -820,7 +820,7 @@ class ZipWrapper extends ArchiveWrapper {
         let files = Object.entries(zip.files)
             .filter(v => v[1].dir == false)
             .map(v => v[0])
-        return files
+        return files.sort()
     }
     // https://stuk.github.io/jszip/documentation/api_zipobject/async.html
     async #getFileContents(filename, filekind) {
