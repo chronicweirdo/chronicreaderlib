@@ -858,13 +858,24 @@ class RarWrapper extends ArchiveWrapper {
         }
         return this.rar
     }
+    #getFilesRecursive(entry) {
+        if (entry.ls != undefined) {
+            let result = []
+            for (let k of Object.keys(entry.ls)) {
+                result = result.concat(this.#getFilesRecursive(entry.ls[k]))
+            }
+            return result
+        } else {
+            return [entry]
+        }
+    }
     async getFiles() {
         var rar = await this.#getRar()
-        let files = Object.keys(rar.ls)
-        return files.sort()
+        let files = this.#getFilesRecursive(rar)
+        return files.map(f => f.fullFileName).sort()
     }
 
-    #toBase64(dataArr){
+    #toBase64(dataArr) {
         var encoder = new TextEncoder("ascii");
         var decoder = new TextDecoder("ascii");
         var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
@@ -904,10 +915,15 @@ class RarWrapper extends ArchiveWrapper {
 
     async getBase64FileContents(filename) {
         let rar = await this.#getRar()
-        let file = rar.ls[filename]
-        let fileContent = file.fileContent
-        var b64encoded = this.#toBase64(fileContent)
-        return b64encoded
+        let files = this.#getFilesRecursive(rar)
+        let file = files.find(f => f.fullFileName == filename)
+        if (file != undefined) {
+            let fileContent = file.fileContent
+            var b64encoded = this.#toBase64(fileContent)
+            return b64encoded
+        } else {
+            return null
+        }
     }
 
     async getTextFileContents(filename) {
@@ -967,7 +983,7 @@ class ComicWrapper extends BookWrapper {
     }
 
     async getSize() {
-        let files = await this.archive.getFiles()
+        let files = await this.#getImageFiles()
         return files.length
     }
 
@@ -1014,9 +1030,15 @@ class ComicWrapper extends BookWrapper {
         return toc
     }
 
+    async #getImageFiles() {
+        let files = await this.archive.getFiles()
+        let validFiles = files.filter(f => f.toLowerCase().match(/(.jpg|.jpeg|.png|.gif)$/))
+        return validFiles
+    }
+
     async getContentsAt(position) {
         if (position >= 0 && position < await this.getSize()) {
-            let files = await this.archive.getFiles()
+            let files = await this.#getImageFiles()
             let file = files[position]
             let contents = await this.archive.getBase64FileContents(file)
             return "data:" + getFileMimeType(file) + ";base64," + contents
