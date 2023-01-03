@@ -1521,9 +1521,7 @@ class Display {
         this.loading = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100 - 2 * this.settings.leftMarginPercent) + "%", "100%", "#ffffff00")
         this.loading.appendChild(this.getLoadingSvg())
         this.loading.style.zIndex = 2000
-        if (this.settings.displayControls) {
-            this.setControlsColor(this.settings.controlsColor)
-        }
+        this.setControlsColor(this.settings.controlsColor)
 
         if (this.settings.enableKeyboard) {
             this.#enableKeyboardGestures({
@@ -2616,10 +2614,12 @@ class EbookDisplay extends Display {
     }
 
     setControlsColor(color) {
-        this.previous.style.stroke = color
-        this.next.style.stroke = color
-        if (this.toolsLeft) this.toolsLeft.style.stroke = color
-        if (this.toolsRight) this.toolsRight.style.stroke = color
+        if (this.settings.displayControls) {
+            this.previous.style.stroke = color
+            this.next.style.stroke = color
+            if (this.toolsLeft) this.toolsLeft.style.stroke = color
+            if (this.toolsRight) this.toolsRight.style.stroke = color
+        }
         this.loading.style.stroke = color
     }
 
