@@ -1344,7 +1344,7 @@ class Display {
         this.setDefault("swipeLength", 0.06)
         this.setDefault("swipeAngleThreshold", 30)
         this.setDefault("enableKeyboard", false)
-        this.setDefault("toolsContents", ["cover", "toc", "zoom", "progress"])
+        this.setDefault("toolsContents", ["cover", "toc", "progress"])
         this.setDefault("flipToolsAlignment", false)
     }
 
@@ -1433,14 +1433,8 @@ class Display {
 
     }
 
-    // or decrease text size
-    async zoomOut() {
-
-    }
-
-    // or increase text size
-    async zoomIn() {
-
+    // trigger an update
+    update() {
     }
 
     hideTools() {
@@ -1634,17 +1628,6 @@ class Display {
         }
     }
 
-    async addZoomToToolsContents(toolsContents) {
-        let decreaseTextSizeButton = document.createElement("a")
-        decreaseTextSizeButton.innerHTML = "zoom out"
-        decreaseTextSizeButton.onclick = () => this.zoomOut()
-        toolsContents.appendChild(decreaseTextSizeButton)
-        let increaseTextSizeButton = document.createElement("a")
-        increaseTextSizeButton.innerHTML = "zoom in"
-        increaseTextSizeButton.onclick = () => this.zoomIn()
-        toolsContents.appendChild(increaseTextSizeButton)
-    }
-
     async addProgressToToolsContents(toolsContents) {
         this.progressDisplay = document.createElement("p")
         this.progressDisplay.style.direction = "ltr"
@@ -1668,8 +1651,6 @@ class Display {
                 await this.addCoverToToolsUi(toolsContents)
             } else if (content == "toc") {
                 await this.addTocToToolsUi(toolsContents)
-            } else if (content == "zoom") {
-                await this.addZoomToToolsContents(toolsContents)
             } else if (content == "progress") {
                 await this.addProgressToToolsContents(toolsContents)
             } else {
@@ -1745,6 +1726,10 @@ class ComicDisplay extends Display {
         if (this.toolsLeft) this.toolsLeft.style.stroke = color
         if (this.toolsRight) this.toolsRight.style.stroke = color
         this.loading.style.stroke = color
+    }
+
+    update() {
+        console.log("do nothing")
     }
 
     buildUi() {
@@ -2567,7 +2552,6 @@ class EbookDisplay extends Display {
 
     setBook(book) {
         super.setBook(book)
-        this.setTextSize(this.settings.textSize)
         this.displayPageFor(this.getPosition()).then(() => {
             this.triggerComputationForAllPages()
         })
@@ -2575,11 +2559,6 @@ class EbookDisplay extends Display {
 
     configure() {
         super.configure()
-
-        this.setDefault("textSize", 1)
-        this.setDefault("maximumTextSize", 2)
-        this.setDefault("minimumTextSize", 0.5)
-        this.setDefault("textSizeStep", 0.1)
     }
 
     async #delayedRefresh(timestamp) {
@@ -2610,34 +2589,6 @@ class EbookDisplay extends Display {
             })
     }
 
-    setTextSize(value) {
-        this.settings.textSize = value
-        this.page.style.fontSize = this.settings.textSize + "em"
-        this.shadowPage.style.fontSize = this.settings.textSize + "em"
-        this.#timeout(1000).then(() => {
-            console.log("recomputing for text size " + this.settings.textSize)
-            this.displayPageFor(this.currentPage.start)
-        })
-    }
-
-    zoomIn() {
-        let currentTextSize = this.settings.textSize
-        let newTextSize = currentTextSize + this.settings.textSizeStep
-        if (newTextSize > this.settings.maximumTextSize) {
-            newTextSize = this.settings.maximumTextSize
-        }
-        this.setTextSize(newTextSize)
-    }
-
-    zoomOut() {
-        let currentTextSize = this.settings.textSize
-        let newTextSize = currentTextSize - this.settings.textSizeStep
-        if (newTextSize < this.settings.minimumTextSize) {
-            newTextSize = this.settings.minimumTextSize
-        }
-        this.setTextSize(newTextSize)
-    }
-
     setControlsColor(color) {
         if (this.settings.displayControls) {
             this.previous.style.stroke = color
@@ -2650,6 +2601,10 @@ class EbookDisplay extends Display {
 
     #getViewportWidth() {
         return this.page.offsetWidth
+    }
+
+    update() {
+        this.displayPageFor(this.currentPage.start)
     }
 
     buildUi() {
@@ -2669,17 +2624,15 @@ class EbookDisplay extends Display {
 
         this.page = createDivElement(this.element, this.settings.leftMarginPercent + "%", this.settings.topMarginPercent + "%", (100 - 2 * this.settings.leftMarginPercent) + "%", (100 - 2 * this.settings.topMarginPercent) + "%", "#ffffff00")
         this.page.classList.add("ebookPage")
-        this.page.style.fontSize = this.textSize + "em"
         
         this.shadowPage = createDivElement(this.element, this.settings.leftMarginPercent + "%", this.settings.topMarginPercent + "%", (100 - 2 * this.settings.leftMarginPercent) + "%", (100 - 2 * this.settings.topMarginPercent) + "%", "#ffffff")
         this.shadowPage.classList.add("ebookPage")
-        this.shadowPage.style.fontSize = this.textSize + "em"
         this.shadowPage.style.visibility = "hidden"
         this.shadowPage.style.overflow = "auto"
         this.shadowElement = this.shadowPage
 
         window.onresize = () => {
-            executeWithDelay(() => { this.displayPageFor(this.currentPage.start) }, 500)
+            executeWithDelay(() => { this.update() }, 500)
         }
 
         let panX = 0
@@ -3126,8 +3079,8 @@ class ChronicReader {
     }
 
     update() {
-        if (this.display && this.display.getPosition()) {
-            this.display.displayPageFor(this.display.getPosition())
+        if (this.display) {
+            this.display.update()
         }
     }
 }
