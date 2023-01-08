@@ -132,7 +132,7 @@ function createDivElement(parent, left, top, width, height, color) {
     element.style.left = left
     element.style.width = width
     element.style.height = height
-    element.style.backgroundColor = color
+    if (color != undefined && color != null) element.style.backgroundColor = color
     parent.appendChild(element)
     return element
 }
@@ -1345,6 +1345,7 @@ class Display {
         this.setDefault("swipeAngleThreshold", 30)
         this.setDefault("enableKeyboard", false)
         this.setDefault("toolsContents", ["cover", "toc", "zoom", "progress"])
+        this.setDefault("flipToolsAlignment", false)
     }
 
     getPosition() {
@@ -1478,26 +1479,28 @@ class Display {
         this.next.onclick = () => { this.goToNextView() }
         let displayToolsFunction = null
         if (this.settings.showTools) {
-            this.toolsLeft = createDivElement(this.element, 0, (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#ff00ff00")
+            this.toolsLeft = createDivElement(this.element, 0, (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", null)
             if (this.settings.displayControls) {
                 this.#addControlHoverActions(this.toolsLeft, this.getToolsSvg())
             }
-            this.toolsRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", "#00ffff00")
+            this.toolsRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", (100-this.settings.toolsButtonPercent) + "%", this.settings.leftMarginPercent + "%", this.settings.toolsButtonPercent + "%", null)
             if (this.settings.displayControls) {
                 this.#addControlHoverActions(this.toolsRight, this.getToolsSvg())
             }
         
-            this.toolsBackgroundColor = "#ffffffee"
-            this.tools = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100-this.settings.leftMarginPercent*2) + "%", "100%", this.toolsBackgroundColor)
+            this.tools = createDivElement(this.element, this.settings.leftMarginPercent + "%", 0, (100-this.settings.leftMarginPercent*2) + "%", "100%", null)
+            this.tools.classList.add(Display.CLASS_TOOLS)
             this.tools.style.display = "none"
             this.tools.style.overflow = "scroll"
             this.tools.style.zIndex = 1000
 
-            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeLeft = createDivElement(this.element, 0, 0, this.settings.leftMarginPercent + "%", "100%", null)
+            this.toolsMinimizeLeft.classList.add(Display.CLASS_TOOLS)
             this.toolsMinimizeLeft.style.display = "none"
             this.toolsMinimizeLeft.style.zIndex = 1000
             
-            this.toolsMinimizeRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, this.settings.leftMarginPercent + "%", "100%", this.toolsBackgroundColor)
+            this.toolsMinimizeRight = createDivElement(this.element, (100-this.settings.leftMarginPercent) + "%", 0, this.settings.leftMarginPercent + "%", "100%", null)
+            this.toolsMinimizeRight.classList.add(Display.CLASS_TOOLS)
             this.toolsMinimizeRight.style.display = "none"
             this.toolsMinimizeRight.style.zIndex = 1000
 
@@ -1505,12 +1508,14 @@ class Display {
                 this.tools.style.display = "block"
                 this.toolsMinimizeLeft.style.display = "block"
                 this.toolsMinimizeRight.style.display = "block"
-                if (alignedRight) {
-                    this.tools.style.textAlign = "right"
-                    this.tools.style.direction = "rtl"
-                } else {
-                    this.tools.style.textAlign = "left"
-                    this.tools.style.direction = "ltr"
+                if (this.settings.flipToolsAlignment == true) {
+                    if (alignedRight) {
+                        this.tools.style.textAlign = "right"
+                        this.tools.style.direction = "rtl"
+                    } else {
+                        this.tools.style.textAlign = "left"
+                        this.tools.style.direction = "ltr"
+                    }
                 }
             }
             this.toolsLeft.onclick = () => displayToolsFunction(false)
@@ -1562,6 +1567,7 @@ class Display {
         let coverBase64 = await this.book.getCover()
         if (coverBase64) {
             let coverElement = document.createElement("img")
+            coverElement.style.maxWidth = "100%"
             coverElement.src = coverBase64
             toolsContents.appendChild(coverElement)
         }
@@ -1575,7 +1581,7 @@ class Display {
             link.innerHTML = node.name
             link.setAttribute("position", node.position)
             link.style.direction = "ltr"
-            link.style.display = "inline-block"
+            //link.style.display = "inline-block"
             link.onclick = () => {
                 this.hideTools()
                 this.displayPageFor(node.position)
@@ -1646,9 +1652,11 @@ class Display {
         toolsContents.appendChild(this.progressDisplay)
     }
 
+    static CLASS_TOOLS = "tools"
+    static CLASS_TOOLS_CONTENTS = "toolsContents"
     async buildToolsUi() {
         let toolsContents = document.createElement("div")
-        toolsContents.classList.add("ebookPage")
+        toolsContents.classList.add(Display.CLASS_TOOLS_CONTENTS)
         toolsContents.style.position = "absolute"
         toolsContents.style.top = 0
         toolsContents.style.left = 0
@@ -1794,7 +1802,9 @@ class ComicDisplay extends Display {
         this.#setTop(centerY - newSideTop)
 
         this.#setZoom(zoom)
-        this.#setZoomJump(zoom)
+        if (zoom > this.#getMinimumZoom()) {
+            this.#setZoomJump(zoom)
+        }
         if (withImageUpdate) this.#update()
     }
 
@@ -1906,6 +1916,7 @@ class ComicDisplay extends Display {
         }
     }
     #resetPan() {
+        this.#setPanPossible(true)
         if (this.#isEndOfRow() && this.#isEndOfColumn()) {
             this.swipeNextPossible = true
         } else {
@@ -1946,12 +1957,22 @@ class ComicDisplay extends Display {
                 this.#update()
                 return false
             }
-        } else {
+        } else if (this.#getPanPossible()) {
             this.#addLeft(x)
             this.#addTop(y)
             this.#update()
             return false
+        } else {
+            return false
         }
+    }
+
+    #getPanPossible() {
+        return this.panPossible
+    }
+
+    #setPanPossible(value) {
+        this.panPossible = value
     }
 
     #getFitComicToScreen() {
@@ -1967,6 +1988,7 @@ class ComicDisplay extends Display {
     }
     #setZoomJump(value) {
         this.zoomJump = value
+        this.#setFitComicToScreen(false)
     }
     #zoomJump(x, y) {
         if (this.#getFitComicToScreen()) {
@@ -2039,6 +2061,7 @@ class ComicDisplay extends Display {
     async nextPage() {
         let size = await this.book.getSize()
         if (this.getPosition() < size - 1) {
+            this.#setPanPossible(false)
             this.displayPageFor(this.getPosition() + 1).then(() => {
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
@@ -2052,6 +2075,7 @@ class ComicDisplay extends Display {
     async previousPage() {
         if (this.getPosition() > 0) {
             this.displayPageFor(this.getPosition() - 1).then(() => {
+                this.#setPanPossible(false)
                 if (this.#getFitComicToScreen()) {
                     this.#fitPageToScreen()
                 } else {
@@ -2543,6 +2567,7 @@ class EbookDisplay extends Display {
 
     setBook(book) {
         super.setBook(book)
+        this.setTextSize(this.settings.textSize)
         this.displayPageFor(this.getPosition()).then(() => {
             this.triggerComputationForAllPages()
         })
@@ -2585,7 +2610,7 @@ class EbookDisplay extends Display {
             })
     }
 
-    #setTextSize(value) {
+    setTextSize(value) {
         this.settings.textSize = value
         this.page.style.fontSize = this.settings.textSize + "em"
         this.shadowPage.style.fontSize = this.settings.textSize + "em"
@@ -2601,7 +2626,7 @@ class EbookDisplay extends Display {
         if (newTextSize > this.settings.maximumTextSize) {
             newTextSize = this.settings.maximumTextSize
         }
-        this.#setTextSize(newTextSize)
+        this.setTextSize(newTextSize)
     }
 
     zoomOut() {
@@ -2610,7 +2635,7 @@ class EbookDisplay extends Display {
         if (newTextSize < this.settings.minimumTextSize) {
             newTextSize = this.settings.minimumTextSize
         }
-        this.#setTextSize(newTextSize)
+        this.setTextSize(newTextSize)
     }
 
     setControlsColor(color) {
@@ -3083,8 +3108,8 @@ class ChronicReader {
     }
 
     async #init() {
-        let response = await fetch(this.url)
         this.display = Display.factory(this.element, this.settings, this.extension)
+        let response = await fetch(this.url)
         let content = await response.blob()
 
         let archiveWrapper = ArchiveWrapper.factory(this.url, content, this.extension)
@@ -3097,6 +3122,12 @@ class ChronicReader {
     displayPageFor(position) {
         if (this.display) {
             this.display.displayPageFor(position)
+        }
+    }
+
+    update() {
+        if (this.display && this.display.getPosition()) {
+            this.display.displayPageFor(this.display.getPosition())
         }
     }
 }
