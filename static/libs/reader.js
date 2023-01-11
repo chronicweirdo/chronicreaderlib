@@ -1721,6 +1721,9 @@ class Display {
     hideLoading() {
         this.loading.style.display = "none"
     }
+
+    destroy() {
+    }
 }
 
 class ComicDisplay extends Display {
@@ -2983,7 +2986,9 @@ class EbookDisplay extends Display {
             return null
         }
     }
-
+    destroy() {
+        this.stopped = true
+    }
 }
 
 class Page {

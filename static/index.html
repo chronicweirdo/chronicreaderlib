@@ -29,15 +29,15 @@
             }
         }
 
-        function displayBook() {
+        async function displayBook() {
             //console.log(urls[index])
             if (reader) {
                 reader.destroy()
             }
-            reader = new ChronicReader(
+            reader = await ChronicReader.initDisplay(
                 urls[index], 
                 document.getElementById("page"),
-                getFileExtension(urls[index]),
+                null,
                 {
                     "position": positions[index],
                     "displayPageForCallback": displayPageCallback,
