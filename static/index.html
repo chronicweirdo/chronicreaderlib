@@ -1,148 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="/libs/jszip.js"></script>
-    <script src="/libs/libunrar.js"></script>
-    <script src="/libs/reader.js"></script>
-    <script>
-        var urls = ["/books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub", 
-            "/books/Feature_Comics_111.cbz",
-            "/books/RangerHouse.cbr"];
-        var positions = [0, 10]
-        var index = 0;
-        var book;
-        var reader;
-        function negative(col) {
-            return [255 - col[0], 255 - col[1], 255 - col[2]]
-        }
-        function displayPageCallback(display) {
-            let dominantColor = display.dominantColor
-            if (dominantColor) {
-                //console.log(dominantColor)
-                let color = "rgb(" + dominantColor[0] + "," + dominantColor[1] + "," + dominantColor[2] + ")" 
-                document.body.style.backgroundColor = color
-                let neg = negative(dominantColor)
-                //console.log(neg)
-                display.setControlsColor("rgb(" + neg[0] + "," + neg[1] + "," + neg[2] + ")")
-            } else {
-                document.body.style.backgroundColor = "white"
-            }
-        }
-
-        async function displayBook() {
-            //console.log(urls[index])
-            if (reader) {
-                reader.destroy()
-            }
-            reader = await ChronicReader.initDisplay(
-                urls[index], 
-                document.getElementById("page"),
-                null,
-                {
-                    "position": positions[index],
-                    "displayPageForCallback": displayPageCallback,
-                    "enableKeyboard": true,
-                    "toolsContents": ["toc", "cover", "zoom", "progress",
-                        () => {
-                            let p = document.createElement("p")
-
-                            let prev = document.createElement("a")
-                            prev.innerHTML = "previous"
-                            prev.onclick = () => displayPreviousBook()
-                            p.appendChild(prev)
-
-                            let next = document.createElement("a")
-                            next.innerHTML = "next"
-                            next.onclick = () => displayNextBook()
-                            p.appendChild(next)
-
-                            return p
-                        }
-                    ]
-                }
-            )
-        }
-        function displayNextBook() {
-            index = index + 1
-            if (index >= urls.length) {
-                index = 0
-            }
-            displayBook()
-        }
-        function displayPreviousBook() {
-            index = index - 1
-            if (index < 0) {
-                index = urls.length - 1
-            }
-            displayBook()
-        }
-        window.onload = function() {
-            displayBook()
-        }
-        function getFontSizePx(element) {
-            let fontSizeString = window.getComputedStyle(element, null).getPropertyValue('font-size')
-            if (fontSizeString.endsWith) {
-                return Number(fontSizeString.substring(0, fontSizeString.length - 2))
-            } else {
-                return null
-            }
-        }
-        function increaseFontSize() {
-            let page = document.getElementById("page")
-            let fontSize = getFontSizePx(page)
-            let newFontSize = fontSize + 1
-            console.log(newFontSize)
-            page.style.fontSize = newFontSize + "px"
-            reader.update()
-        }
-        function decreaseFontSize() {
-            let page = document.getElementById("page")
-            let fontSize = getFontSizePx(page)
-            let newFontSize = fontSize - 1
-            page.style.fontSize = newFontSize + "px"
-            reader.update()
-        }
-        /*window.addEventListener('resize', function() {
-            reader.refresh()
-        }, true)*/
-    </script>
+    <script src="libs/jszip.js"></script>
+    <script src="libs/libunrar.js"></script>
+    <script src="libs/reader.js"></script>
+    <!--script src="https://github.com/chronicweirdo/chronicreaderlib/releases/download/v0.1/chronicreaderlib-0.1.min.js"></script-->
+    
     <style>
-        body {
+        .book {
+            position: relative;
+            width: 500px;
+            height: 800px;
             overflow: hidden;
-            /*font-size: 2em;*/
-        }
-        .page {
-            position: fixed;
-            width: 80%;
-            height: 80%;
-            top: 10%;
-            left: 10%;
-            overflow: hidden;
-            font-size: 1.5em;
-        }
-        .page a {
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        .page .highlighted {
-            font-style: italic;
-        }
-        .ebookPage img, .ebookPage image {
-            max-width: 100%;
-            max-height: 100%;
+            border: 1px solid black;
         }
         .tools {
-            background-color: #ffffff;
-            opacity: .9
+            background-color: white;
         }
     </style>
 </head>
 <body>
-    <div id = "controls">
-        <a onclick="displayNextBook();">next</a>
-        <a onclick="decreaseFontSize()">decrease font size</a>
-        <a onclick="increaseFontSize()">increase font size</a>
-    </div>
-    <div id="page" class="page"></div>
+    <h1>Chronicreaderlib Demo</h1>
+    <h2>Displaying an EPUB ebook</h2>
+    <div id="bookDisplayDiv" class="book"></div>
+    <h2>Displaying a CBZ comic</h2>
+    <div id="comicDisplayDiv" class="book"></div>
+    <h2>Displaying a CBR comic</h2>
+    <div id="cbrDisplayDiv" class="book"></div>
+    <script>
+        async function init() {
+            var bookReader = await ChronicReader.initDisplay('books/That_Affair_at_Elizabeth_by_Burton_Egbert_Stevenson.epub', document.getElementById("bookDisplayDiv"))
+            var comicReader = await ChronicReader.initDisplay('books/Feature_Comics_111.cbz', document.getElementById("comicDisplayDiv"))
+            var cbrReader = await ChronicReader.initDisplay('books/RangerHouse.cbr', document.getElementById('cbrDisplayDiv'))
+        }
+        init()
+    </script>
 </body>
 </html>
