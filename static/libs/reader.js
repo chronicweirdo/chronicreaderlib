@@ -775,24 +775,23 @@ class EbookNode {
 
 class ArchiveWrapper {
 
-    static factory(url, bytes, extension) {
-        if (extension == "epub" || extension == "cbz") {
-            return new ZipWrapper(url, bytes)
-        } else if (extension == "cbr") {
-            return new RarWrapper(url, bytes)
+    static factory(type, bytes = null) {
+        if ((type == "zip" || type == "epub" || type == "cbz") && bytes != null) {
+            return new ZipWrapper(bytes)
+        } else if ((type == "rar" || type == "cbz") && bytes != null) {
+            return new RarWrapper(bytes)
         } else {
             return null
         }
     }
 
-    constructor(url, bytes) {
-        this.url = url
+    constructor(bytes) {
         this.data = bytes
     }
-    getUrl() {
-        return this.url
-    }
     async getFiles() {
+        throw NOT_IMPLEMENTED_EXCEPTION
+    }
+    async getFileContents(filename) {
         throw NOT_IMPLEMENTED_EXCEPTION
     }
     async getBase64FileContents(filename) {
@@ -804,8 +803,8 @@ class ArchiveWrapper {
 }
 
 class ZipWrapper extends ArchiveWrapper {
-    constructor(url, bytes) {
-        super(url, bytes)
+    constructor(bytes) {
+        super(bytes)
     }
     async #getZip() {
         if (this.zip == undefined) {
@@ -826,8 +825,15 @@ class ZipWrapper extends ArchiveWrapper {
     async #getFileContents(filename, filekind) {
         let zip = await this.#getZip()
         let entry = zip.files[filename]
-        let contents = await entry.async(filekind)
-        return contents
+        if (entry) {
+            let contents = await entry.async(filekind)
+            return contents
+        } else {
+            return null
+        }
+    }
+    async getFileContents(filename) {
+        return this.#getFileContents(filename, "binarystring")
     }
     async getBase64FileContents(filename) {
         return this.#getFileContents(filename, "base64")
@@ -838,11 +844,8 @@ class ZipWrapper extends ArchiveWrapper {
 }
 
 class RarWrapper extends ArchiveWrapper {
-    constructor(url, bytes) {
-        super(url, bytes)
-    }
-    getUrl() {
-        return this.url
+    constructor(bytes) {
+        super(bytes)
     }
     async #getRar() {
         if (this.rar == undefined) {
@@ -875,11 +878,10 @@ class RarWrapper extends ArchiveWrapper {
         return files.map(f => f.fullFileName).sort()
     }
 
-    #toBase64(dataArr) {
+    #toByteArray(dataArr) {
         var encoder = new TextEncoder("ascii");
-        var decoder = new TextDecoder("ascii");
         var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
-    
+
         var padding = dataArr.byteLength % 3;
         var len = dataArr.byteLength - padding;
         padding = padding > 0 ? (3 - padding) : 0;
@@ -906,6 +908,14 @@ class RarWrapper extends ArchiveWrapper {
             output[outputCtr++] = base64Table[64];
             output[outputCtr++] = base64Table[64];
         }
+
+        return output
+    }
+
+    #toBase64(dataArr) {
+        var decoder = new TextDecoder("ascii");
+        
+        let output = this.#toByteArray(dataArr)
         
         var ret = decoder.decode(output);
         output = null;
@@ -913,17 +923,24 @@ class RarWrapper extends ArchiveWrapper {
         return ret;
     }
 
-    async getBase64FileContents(filename) {
+    async #getFileContents(filename) {
         let rar = await this.#getRar()
         let files = this.#getFilesRecursive(rar)
         let file = files.find(f => f.fullFileName == filename)
         if (file != undefined) {
             let fileContent = file.fileContent
-            var b64encoded = this.#toBase64(fileContent)
-            return b64encoded
+            return fileContent
         } else {
             return null
         }
+    }
+
+    async getFileContents(filename) {
+        return await this.#getFileContents(filename)
+    }
+
+    async getBase64FileContents(filename) {
+        return this.#toBase64(await this.#getFileContents(filename))
     }
 
     async getTextFileContents(filename) {
@@ -933,22 +950,19 @@ class RarWrapper extends ArchiveWrapper {
 
 class BookWrapper {
 
-    static factory(archive, extension) {
+    static factory(id, archive, extension) {
         if (extension == "epub") {
-            return new EbookWrapper(archive)
+            return new EbookWrapper(id, archive)
         } else if (extension == "cbz" || extension == "cbr") {
-            return new ComicWrapper(archive)
+            return new ComicWrapper(id, archive)
         } else {
             return null
         }
     }
 
-    constructor(archive) {
+    constructor(id, archive) {
+        this.id = id
         this.archive = archive
-    }
-
-    getUrl() {
-        return this.archive.getUrl()
     }
 
     async getSize() {
@@ -978,8 +992,8 @@ comic wrapper
 */
 
 class ComicWrapper extends BookWrapper {
-    constructor(archive) {
-        super(archive)
+    constructor(id, archive) {
+        super(id, archive)
     }
 
     async getSize() {
@@ -2199,8 +2213,8 @@ ebook wrapper
 */
 
 class EbookWrapper extends BookWrapper {
-    constructor(archive) {
-        super(archive)
+    constructor(id, archive) {
+        super(id, archive)
     }
 
     async getNodes() {
@@ -2604,7 +2618,9 @@ class EbookDisplay extends Display {
     }
 
     update() {
-        this.displayPageFor(this.currentPage.start)
+        if (this.currentPage) {
+            this.displayPageFor(this.currentPage.start)
+        }
     }
 
     buildUi() {
@@ -2757,7 +2773,7 @@ class EbookDisplay extends Display {
     }
 
     #getPageSizeKey() {
-        let url = this.book.getUrl()
+        let url = this.book.id
         let el = this.page
         let fontSize = window.getComputedStyle(el, null).getPropertyValue('font-size')
         return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
@@ -3040,47 +3056,31 @@ class PageCache {
 }
 
 class ChronicReader {
-    constructor(url, element, extension = null, settings = {}) {
-        this.url = url
-        this.element = element
+    static getArchiveType(extension) {
+        if (extension == "epub" || extension == "cbz") return "zip"
+        else if (extension == "cbr") return "rar"
+        else return ""
+    }
+    static async initDisplay(url, element, extension = null, settings = {}) {
         if (extension == null) {
-            this.extension = getFileExtension(this.url)
-        } else {
-            this.extension = extension
+            extension = getFileExtension(url)
         }
-        this.settings = settings
-        this.#init()
-        chronicReaderInstance = this
-    }
-
-    destroy() {
-        if (this.type == "book") {
-            console.log("attempting stopping computation")
-            this.display.stopped = true
-        }
-    }
-
-    async #init() {
-        this.display = Display.factory(this.element, this.settings, this.extension)
-        let response = await fetch(this.url)
+        console.log("url " + url + " extension " + extension)
+        let archiveType = ChronicReader.getArchiveType(extension)
+    
+        let display = Display.factory(element, settings, extension)
+        
+        //let id = this.url.substring("book/".length)
+        let response = await fetch(url)
         let content = await response.blob()
-
-        let archiveWrapper = ArchiveWrapper.factory(this.url, content, this.extension)
-        let bookWrapper = BookWrapper.factory(archiveWrapper, this.extension)
+    
+        let archiveWrapper = ArchiveWrapper.factory(archiveType, content)
+        //let archiveWrapper = new RemoteArchive(this.url, "archive", id)
+        let bookWrapper = BookWrapper.factory(url, archiveWrapper, extension)
         if (bookWrapper) {
-            this.display.setBook(bookWrapper)
+            display.setBook(bookWrapper)
         }
-    }
 
-    displayPageFor(position) {
-        if (this.display) {
-            this.display.displayPageFor(position)
-        }
-    }
-
-    update() {
-        if (this.display) {
-            this.display.update()
-        }
+        return display
     }
 }
