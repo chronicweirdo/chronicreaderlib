@@ -805,135 +805,157 @@ class EbookNode {
 }
 
 class ArchiveWrapper {
-
     static factory(type, bytes = null) {
-        if ((type == "zip" || type == "epub" || type == "cbz") && bytes != null) {
-            return new ZipWrapper(bytes)
+        if ((type == "zip" || type == "epub" || type == "cbz") 
+            && bytes != null)
+        {
+            return new ZipWrapper(bytes);
         } else if ((type == "rar" || type == "cbr") && bytes != null) {
-            return new RarWrapper(bytes)
+            return new RarWrapper(bytes);
         } else {
-            return null
+            return null;
         }
     }
 
     constructor(bytes) {
-        this.data = bytes
+        this.data = bytes;
     }
+
     async getFiles() {
-        throw NOT_IMPLEMENTED_EXCEPTION
+        throw NOT_IMPLEMENTED_EXCEPTION;
     }
+
     async getFileContents(filename) {
-        throw NOT_IMPLEMENTED_EXCEPTION
+        throw NOT_IMPLEMENTED_EXCEPTION;
     }
+
     async getBase64FileContents(filename) {
-        throw NOT_IMPLEMENTED_EXCEPTION
+        throw NOT_IMPLEMENTED_EXCEPTION;
     }
+
     async getTextFileContents(filename) {
-        throw NOT_IMPLEMENTED_EXCEPTION
+        throw NOT_IMPLEMENTED_EXCEPTION;
     }
 }
 
 class ZipWrapper extends ArchiveWrapper {
     constructor(bytes) {
-        super(bytes)
+        super(bytes);
     }
+
     async #getZip() {
         if (this.zip == undefined) {
-            var zip = new JSZip()
-            var z = await zip.loadAsync(this.data)
-            this.zip = z
+            let zip = new JSZip();
+            let z = await zip.loadAsync(this.data);
+            this.zip = z;
         }
-        return this.zip
+        return this.zip;
     }
+    
     async getFiles() {
-        let zip = await this.#getZip()
+        let zip = await this.#getZip();
         let files = Object.entries(zip.files)
             .filter(v => v[1].dir == false)
-            .map(v => v[0])
-        return files.sort()
+            .map(v => v[0]);
+        return files.sort();
     }
+
     // https://stuk.github.io/jszip/documentation/api_zipobject/async.html
     async #getFileContents(filename, filekind) {
-        let zip = await this.#getZip()
-        let entry = zip.files[filename]
+        let zip = await this.#getZip();
+        let entry = zip.files[filename];
         if (entry) {
-            let contents = await entry.async(filekind)
-            return contents
+            let contents = await entry.async(filekind);
+            return contents;
         } else {
-            return null
+            return null;
         }
     }
+
     async getFileContents(filename) {
-        return this.#getFileContents(filename, "binarystring")
+        return this.#getFileContents(filename, "binarystring");
     }
+
     async getBase64FileContents(filename) {
-        return this.#getFileContents(filename, "base64")
+        return this.#getFileContents(filename, "base64");
     }
+
     async getTextFileContents(filename) {
-        return this.#getFileContents(filename, "text")
+        return this.#getFileContents(filename, "text");
     }
 }
 
 class RarWrapper extends ArchiveWrapper {
     constructor(bytes) {
-        super(bytes)
+        super(bytes);
     }
+
     async #getRar() {
         if (this.rar == undefined) {
-            var content = this.data
+            let content = this.data;
             if (typeCheck(this.data) == "blob") {
-                content = await this.data.arrayBuffer()
+                content = await this.data.arrayBuffer();
             }
-            var rar = readRARContent([{
-                "name": "name.cbr",
-                "content": new Uint8Array(content)
-            }], null, null)
-            this.rar = rar
+            var rar = readRARContent(
+                [{
+                    "name": "name.cbr",
+                    "content": new Uint8Array(content)
+                }],
+                null,
+                null
+            );
+            this.rar = rar;
         }
         return this.rar
     }
+
     #getFilesRecursive(entry) {
         if (entry.ls != undefined) {
-            let result = []
+            let result = [];
             for (let k of Object.keys(entry.ls)) {
-                result = result.concat(this.#getFilesRecursive(entry.ls[k]))
+                result = result.concat(this.#getFilesRecursive(entry.ls[k]));
             }
-            return result
+            return result;
         } else {
-            return [entry]
+            return [entry];
         }
     }
+
     async getFiles() {
-        var rar = await this.#getRar()
-        let files = this.#getFilesRecursive(rar)
-        return files.map(f => f.fullFileName).sort()
+        var rar = await this.#getRar();
+        let files = this.#getFilesRecursive(rar);
+        return files.map(f => f.fullFileName).sort();
     }
 
-    #toByteArray(dataArr) {
-        var encoder = new TextEncoder("ascii");
-        var base64Table = encoder.encode('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
+    DICTIONARY = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
 
-        var padding = dataArr.byteLength % 3;
-        var len = dataArr.byteLength - padding;
+    #toByteArray(dataArr) {
+        let encoder = new TextEncoder("ascii");
+        let base64Table = encoder.encode(this.DICTIONARY);
+
+        let padding = dataArr.byteLength % 3;
+        let len = dataArr.byteLength - padding;
         padding = padding > 0 ? (3 - padding) : 0;
-        var outputLen = ((len/3) * 4) + (padding > 0 ? 4 : 0);
-        var output = new Uint8Array(outputLen);
-        var outputCtr = 0;
+        let outputLen = ((len/3) * 4) + (padding > 0 ? 4 : 0);
+        let output = new Uint8Array(outputLen);
+        let outputCtr = 0;
         for(var i=0; i<len; i+=3){              
-            var buffer = ((dataArr[i] & 0xFF) << 16) | ((dataArr[i+1] & 0xFF) << 8) | (dataArr[i+2] & 0xFF);
+            let buffer = ((dataArr[i] & 0xFF) << 16)
+                | ((dataArr[i+1] & 0xFF) << 8) 
+                | (dataArr[i+2] & 0xFF);
             output[outputCtr++] = base64Table[buffer >> 18];
             output[outputCtr++] = base64Table[(buffer >> 12) & 0x3F];
             output[outputCtr++] = base64Table[(buffer >> 6) & 0x3F];
             output[outputCtr++] = base64Table[buffer & 0x3F];
         }
         if (padding == 1) {
-            var buffer = ((dataArr[len] & 0xFF) << 8) | (dataArr[len+1] & 0xFF);
+            let buffer = ((dataArr[len] & 0xFF) << 8) | (dataArr[len+1] & 0xFF);
             output[outputCtr++] = base64Table[buffer >> 10];
             output[outputCtr++] = base64Table[(buffer >> 4) & 0x3F];
             output[outputCtr++] = base64Table[(buffer << 2) & 0x3F];
             output[outputCtr++] = base64Table[64];
         } else if (padding == 2) {
-            var buffer = dataArr[len] & 0xFF;
+            let buffer = dataArr[len] & 0xFF;
             output[outputCtr++] = base64Table[buffer >> 2];
             output[outputCtr++] = base64Table[(buffer << 4) & 0x3F];
             output[outputCtr++] = base64Table[64];
@@ -944,38 +966,36 @@ class RarWrapper extends ArchiveWrapper {
     }
 
     #toBase64(dataArr) {
-        var decoder = new TextDecoder("ascii");
-        
-        let output = this.#toByteArray(dataArr)
-        
-        var ret = decoder.decode(output);
+        let decoder = new TextDecoder("ascii");
+        let output = this.#toByteArray(dataArr);
+        let ret = decoder.decode(output);
         output = null;
         dataArr = null;
         return ret;
     }
 
     async #getFileContents(filename) {
-        let rar = await this.#getRar()
-        let files = this.#getFilesRecursive(rar)
-        let file = files.find(f => f.fullFileName == filename)
+        let rar = await this.#getRar();
+        let files = this.#getFilesRecursive(rar);
+        let file = files.find(f => f.fullFileName == filename);
         if (file != undefined) {
-            let fileContent = file.fileContent
-            return fileContent
+            let fileContent = file.fileContent;
+            return fileContent;
         } else {
-            return null
+            return null;
         }
     }
 
     async getFileContents(filename) {
-        return await this.#getFileContents(filename)
+        return await this.#getFileContents(filename);
     }
 
     async getBase64FileContents(filename) {
-        return this.#toBase64(await this.#getFileContents(filename))
+        return this.#toBase64(await this.#getFileContents(filename));
     }
 
     async getTextFileContents(filename) {
-        throw NOT_IMPLEMENTED_EXCEPTION
+        throw NOT_IMPLEMENTED_EXCEPTION;
     }
 }
 
