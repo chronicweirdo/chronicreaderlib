@@ -66,6 +66,7 @@ function getFileExtension(filename) {
 }
 function typeCheck(value) {
     const return_value = Object.prototype.toString.call(value)
+    console.log(return_value)
     const type = return_value.substring(
              return_value.indexOf(" ") + 1, 
              return_value.indexOf("]"))
@@ -778,7 +779,7 @@ class ArchiveWrapper {
     static factory(type, bytes = null) {
         if ((type == "zip" || type == "epub" || type == "cbz") && bytes != null) {
             return new ZipWrapper(bytes)
-        } else if ((type == "rar" || type == "cbz") && bytes != null) {
+        } else if ((type == "rar" || type == "cbr") && bytes != null) {
             return new RarWrapper(bytes)
         } else {
             return null
@@ -1721,9 +1722,6 @@ class Display {
     hideLoading() {
         this.loading.style.display = "none"
     }
-
-    destroy() {
-    }
 }
 
 class ComicDisplay extends Display {
@@ -1984,12 +1982,24 @@ class ComicDisplay extends Display {
     #setFitComicToScreen(value) {
         this.fitComicToScreen = value
     }
+    #getZoomJumpKey() {
+        return "zoom_jump_" + this.book.id
+    }
     #getZoomJump() {
-        if (this.zoomJump == undefined) this.zoomJump = 1
+        if (this.zoomJump == undefined) {
+            // try to get from storage
+            let savedZoomJump = window.localStorage.getItem(this.#getZoomJumpKey())
+            if (savedZoomJump != undefined && savedZoomJump != null) {
+                this.zoomJump = JSON.parse(savedZoomJump)
+            } else {
+                this.zoomJump = 1
+            }
+        }
         return this.zoomJump
     }
     #setZoomJump(value) {
         this.zoomJump = value
+        window.localStorage.setItem(this.#getZoomJumpKey(), JSON.stringify(value))
         this.#setFitComicToScreen(false)
     }
     #zoomJump(x, y) {
@@ -2043,13 +2053,17 @@ class ComicDisplay extends Display {
             this.progressDisplay.innerHTML = message
         }
         if (this.settings.displayPageForCallback) {
-            this.settings.displayPageForCallback(this.#buildCallbackControls())
+            let callbackControls = await this.#buildCallbackControls()
+            this.settings.displayPageForCallback(callbackControls)
         }
     }
 
-    #buildCallbackControls() {
+    async #buildCallbackControls() {
+        let position = this.getPosition()
+        let isLastPage = (position + 1) >= (await this.book.getSize())
         return {
             "position": this.getPosition(),
+            "isLastPage": isLastPage,
             "dominantColor": this.#computeImageDominantColor(),
             "setControlsColor": (color) => this.setControlsColor(color)
         }
@@ -2667,7 +2681,6 @@ class EbookDisplay extends Display {
             }
         }
         let touchGesturePan = (event) => {
-            console.log(swipeStart)
             if (event.touches.length == 1 && window.getSelection().type != "Range" && swipeStart) {
                 let newX = event.touches[0].pageX
                 let newY = event.touches[0].pageY
@@ -2739,7 +2752,8 @@ class EbookDisplay extends Display {
             }
             await this.#timeout(10)
             if (this.settings.displayPageForCallback) {
-                this.settings.displayPageForCallback(this.#buildCallbackControls())
+                let callbackControls = await this.#buildCallbackControls()
+                this.settings.displayPageForCallback(callbackControls)
             }
         } else {
             console.log("page is NULL!!")
@@ -2748,9 +2762,13 @@ class EbookDisplay extends Display {
         return page
     }
 
-    #buildCallbackControls() {
+    async #buildCallbackControls() {
+        let position = this.getPosition()
+        let size = await this.book.getSize()
+        let isLastPage = this.currentPage.end >= size
         return {
-            "position": this.getPosition()
+            "position": this.getPosition(),
+            "isLastPage": isLastPage
         }
     }
 
@@ -2782,20 +2800,29 @@ class EbookDisplay extends Display {
         return url + "_" + el.offsetHeight + "x" + el.offsetWidth + "x" + fontSize
     }
 
-    #deserializePageCache(pageCacheKey) {
-        let simpleValue = window.localStorage.getItem(pageCacheKey)
-        return PageCache.deserialize(pageCacheKey, simpleValue)
+    static async loadPageCache(pageCacheKey) {
+        try {
+            let simpleValue = window.localStorage.getItem(pageCacheKey)
+            return PageCache.deserialize(pageCacheKey, simpleValue)
+        } catch (error) {
+            console.log(error)
+            return new PageCache(pageCacheKey)
+        }
     }
 
-    #serializePageCache(pageCache) {
-        window.localStorage.setItem(pageCache.key, pageCache.serialize())
+    static async savePageCache(pageCache) {
+        try {
+            window.localStorage.setItem(pageCache.key, pageCache.serialize())
+        } catch (error) {
+            console.log(error)
+        }
     }
 
-    #getPagesCache() {
+    async #getPagesCache() {
         if (this.pages == undefined) this.pages = {}
         let pageCacheKey = this.#getPageSizeKey()
         if (this.pages[pageCacheKey] == undefined) {
-            this.pages[pageCacheKey] = this.#deserializePageCache(pageCacheKey)
+            this.pages[pageCacheKey] = await EbookDisplay.loadPageCache(pageCacheKey)
         }
         let cache = this.pages[pageCacheKey]
         return cache
@@ -2815,7 +2842,7 @@ class EbookDisplay extends Display {
     }
 
     async #getPageFor(position, withIndex = true) {
-        let pageCache = this.#getPagesCache()
+        let pageCache = await this.#getPagesCache()
         let page = pageCache.getPageFor(position, withIndex)
         if (page != null) {
             return page
@@ -2825,7 +2852,7 @@ class EbookDisplay extends Display {
             do {
                 await this.#timeout(1000)
                 //console.log("trying to get page again")
-                pageCache = this.#getPagesCache()
+                pageCache = await this.#getPagesCache()
                 page = pageCache.getPageFor(position, withIndex)
             } while (page == null)
             return page
@@ -2954,7 +2981,7 @@ class EbookDisplay extends Display {
         if (this.computationInProgress == undefined || this.computationInProgress == false) {
             //let startTimestamp = Date.now()
             this.computationInProgress = true
-            let originalPageCache = this.#getPagesCache()
+            let originalPageCache = await this.#getPagesCache()
             let currentPageCache = originalPageCache
             let start = originalPageCache.getEnd()
             if (start > 0) start = start + 1
@@ -2966,14 +2993,14 @@ class EbookDisplay extends Display {
                 page = await this.#computeMaximalPage2(newStart)
                 originalPageCache.addPage(page)
                 if (Date.now() - lastSavedTimestamp > 30000) {
-                    this.#serializePageCache(originalPageCache)
+                    await EbookDisplay.savePageCache(originalPageCache)
                     lastSavedTimestamp = Date.now()
                 }
-                currentPageCache = this.#getPagesCache()
+                currentPageCache = await this.#getPagesCache()
                 await this.#timeout(1)
             }
             //console.log("finished computing page for " + position + " in " + (Date.now() - startTimestamp) + " (stopped " + this.stopped + ")")
-            this.#serializePageCache(originalPageCache)
+            await EbookDisplay.savePageCache(originalPageCache)
             if (originalPageCache != currentPageCache) {
                 this.computationInProgress = false
                 return null
@@ -2986,9 +3013,7 @@ class EbookDisplay extends Display {
             return null
         }
     }
-    destroy() {
-        this.stopped = true
-    }
+
 }
 
 class Page {
