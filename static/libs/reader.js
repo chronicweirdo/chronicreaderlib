@@ -1,368 +1,366 @@
-var NOT_IMPLEMENTED_EXCEPTION = "not implemented"
-var chronicReaderInstance = null
+var NOT_IMPLEMENTED_EXCEPTION = "not implemented";
 
-var delayExecutionTriggerTimestamp = null
+var delayExecutionTriggerTimestamp = null;
+
 function executeWithDelay(func, ms) {
-    let now = Date.now()
-    delayExecutionTriggerTimestamp = now
+    let now = Date.now();
+    delayExecutionTriggerTimestamp = now;
     let getExecuteWithDelayFunction = function(triggerTimestamp) {
         return () => {
             if (triggerTimestamp == delayExecutionTriggerTimestamp) {
-                func()
+                func();
             }
-        }
+        };
     }
-    window.setTimeout(getExecuteWithDelayFunction(now), ms)
+    window.setTimeout(getExecuteWithDelayFunction(now), ms);
 }
-function getLoadingElement() {
-    let loading = document.createElement('div')
-    loading.innerHTML = "Loading..."
-    return loading
-}
+
 function imageLoadedPromise(image) {
     return new Promise((resolve, reject) => {
         let imageResolveFunction = function() {
-            resolve()
+            resolve();
         }
-        image.onload = imageResolveFunction
-        image.onerror = imageResolveFunction
-    })
-}
-
-function treeTransform(node, selectFunction, transformFunction, childrenSelectFunction) {
-    if (selectFunction(node)) {
-        let result = transformFunction(node)
-        let children = childrenSelectFunction(node)
-        let resultChildren = []
-        for (let i = 0; i < children.length; i++) {
-            let childResult = treeTransform(children[i], selectFunction, transformFunction, childrenSelectFunction)
-            if (childResult != null) {
-                resultChildren.push(childResult)
-            }
-        }
-        if (resultChildren.length > 0) {
-            result.children = resultChildren
-        }
-        return result
-    } else {
-        return null
-    }
+        image.onload = imageResolveFunction;
+        image.onerror = imageResolveFunction;
+    });
 }
 
 function waitForImagesToLoad(images) {
     return new Promise((resolve, reject) => {
-        let imagePromises = []
+        let imagePromises = [];
         for (var i = 0; i < images.length; i++) {
-            imagePromises.push(imageLoadedPromise(images[i]))
+            imagePromises.push(imageLoadedPromise(images[i]));
         }
         Promise.all(imagePromises).then(() => {
-            resolve()
-        })
-    })
+            resolve();
+        });
+    });
 }
+
 function getFileExtension(filename) {
-    let extension = filename.toLowerCase().substring(filename.lastIndexOf('.') + 1)
-    return extension
+    let extension = filename.toLowerCase()
+        .substring(filename.lastIndexOf('.') + 1);
+    return extension;
 }
+
 function typeCheck(value) {
-    const return_value = Object.prototype.toString.call(value)
-    console.log(return_value)
+    const return_value = Object.prototype.toString.call(value);
     const type = return_value.substring(
-             return_value.indexOf(" ") + 1, 
-             return_value.indexOf("]"))
+        return_value.indexOf(" ") + 1, 
+        return_value.indexOf("]")
+    );
   
-    return type.toLowerCase()
+    return type.toLowerCase();
 }
+
 function num(s, def) {
-    var patt = /[\-]?[0-9\.]+/
-    var match = patt.exec(s)
+    var patt = /[\-]?[0-9\.]+/;
+    var match = patt.exec(s);
     if (match != null && match.length > 0) {
-        var n = match[0]
+        var n = match[0];
         if (n.indexOf('.') > -1) {
-            return parseFloat(n)
+            return parseFloat(n);
         } else {
-            return parseInt(n)
+            return parseInt(n);
         }
     }
-    return def
+    return def;
 }
+
 function approx(val1, val2, threshold = 1) {
-    return Math.abs(val1 - val2) < threshold
+    return Math.abs(val1 - val2) < threshold;
 }
+
 function radiansToDegrees(radians) {
-    return radians * (180/Math.PI)
+    return radians * (180/Math.PI);
 }
+
 function computeSwipeParameters(deltaX, deltaY) {
-    let highOnPotenuse = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2))
+    let highOnPotenuse = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
     if (highOnPotenuse != 0) {
-        let swipeSine = deltaY / highOnPotenuse
-        let swipeAngle = Math.abs(radiansToDegrees(Math.asin(swipeSine)))
+        let swipeSine = deltaY / highOnPotenuse;
+        let swipeAngle = Math.abs(radiansToDegrees(Math.asin(swipeSine)));
         return {
             length: highOnPotenuse,
             angle: swipeAngle
-        }
+        };
     } else {
         return {
             length: 0,
             angle: 0
-        }
+        };
     }
 }
+
 function getFileMimeType(filename) {
-    let extension = getFileExtension(filename)
+    let extension = getFileExtension(filename);
     if (extension == "png" || extension == "jpeg"
         || extension == "avif" || extension == "bmp" || extension == "gif"
         || extension == "tiff" || extension == "webp") {
-        return "image/" + extension
+        return "image/" + extension;
     } else if (extension == "jpg") {
-        return "image/jpeg"
+        return "image/jpeg";
     } else if (extension == "tif") {
-        return "image/tiff"
+        return "image/tiff";
     } else if (extension == "svg") {
-        return "image/svg+xml"
+        return "image/svg+xml";
     } else if (extension == "ico") {
-        return "image/vnd.microsoft.icon"
+        return "image/vnd.microsoft.icon";
     } else {
-        return "text/plain"
+        return "text/plain";
     }
 }
+
 function createDivElement(parent, left, top, width, height, color) {
-    let element = document.createElement("div")
-    element.style.position = "absolute"
-    element.style.top = top
-    element.style.left = left
-    element.style.width = width
-    element.style.height = height
-    if (color != undefined && color != null) element.style.backgroundColor = color
-    parent.appendChild(element)
-    return element
+    let element = document.createElement("div");
+    element.style.position = "absolute";
+    element.style.top = top;
+    element.style.left = left;
+    element.style.width = width;
+    element.style.height = height;
+    if (color != undefined && color != null) {
+        element.style.backgroundColor = color;
+    }
+    parent.appendChild(element);
+    return element;
 }
 
 class EbookNode {
-    static LEAF_ELEMENTS = ["img", "tr", "image", "svg"]
+    static LEAF_ELEMENTS = ["img", "tr", "image", "svg"];
 
-    constructor(name, content, parent = null, children = [], start = null, end = null, id = null) {
-        this.name = name
-        this.content = content
-        this.parent = parent
-        this.children = children
-        this.start = start
-        this.end = end
+    constructor(name, content, parent = null, children = [], start = null, 
+        end = null, id = null)
+    {
+        this.name = name;
+        this.content = content;
+        this.parent = parent;
+        this.children = children;
+        this.start = start;
+        this.end = end;
+
         if (this.name != null) {
             try {
-                this.attributes = EbookNode.#parseAttributes(this.content)
+                this.attributes = EbookNode.#parseAttributes(this.content);
             } catch (error) {
-                console.log(error)
+                console.log(error);
             }
         }
     }
 
     static #parseAttributes(content) {
-        let attributes = {}
-        let accumulator = ""
-        let lookingForAttributeName = false
-        let readingAttributeName = false
-        let lookingForAttributeValue = false
-        let readingAttributeValue = false
-        let attributeValueQuotes = null
-        let attributeName = null
-        let attributeValue = null
+        let attributes = {};
+        let accumulator = "";
+        let lookingForAttributeName = false;
+        let readingAttributeName = false;
+        let lookingForAttributeValue = false;
+        let readingAttributeValue = false;
+        let attributeValueQuotes = null;
+        let attributeName = null;
+        let attributeValue = null;
         for (var i = 0; i < content.length; i++) {
-            let c = content.charAt(i)
-            accumulator += c
+            let c = content.charAt(i);
+            accumulator += c;
             if (c == ' ' || c == '\t') {
                 if (lookingForAttributeName) {
                     // discard and continue looking
-                    accumulator = ""
+                    accumulator = "";
                 } else if (readingAttributeName) {
                     // finished reading attribute name
-                    readingAttributeName = false
-                    lookingForAttributeValue = true
-                    attributeName = accumulator.substring(0, accumulator.length - 1)
-                    accumulator = ""
+                    readingAttributeName = false;
+                    lookingForAttributeValue = true;
+                    attributeName = accumulator
+                        .substring(0, accumulator.length - 1);
+                    accumulator = "";
                 } else if (lookingForAttributeValue) {
                     // continue looking, space is not a value
                 } else if (readingAttributeValue) {
                     // continue reading
                 } else {
                     // discard
-                    accumulator = ""
-                    lookingForAttributeName = true
+                    accumulator = "";
+                    lookingForAttributeName = true;
                 }
             } else if (c == '=') {
                 if (readingAttributeName) {
                     // finished reading attribute name
-                    readingAttributeName = false
-                    lookingForAttributeValue = true
-                    attributeName = accumulator.substring(0, accumulator.length - 1)
-                    accumulator = ""
+                    readingAttributeName = false;
+                    lookingForAttributeValue = true;
+                    attributeName = accumulator
+                        .substring(0, accumulator.length - 1);
+                    accumulator = "";
                 } else if (lookingForAttributeValue) {
                     // we are on the right track, but we keep looking
                 } else if (readingAttributeValue) {
                     // all fine, continue reading
                 } else {
                     // error
-                    throw "wild = discovered at position " + i + " in: " + content
+                    throw "wild = discovered at position " + i 
+                        + " in: " + content;
                 }
             } else if (c == attributeValueQuotes) {
                 if (readingAttributeValue) {
                     // may be end of attribute value read unless escaped
                     if (accumulator.charAt(accumulator.length - 2) != '\\') {
                         // finish reading attribute value and save attribute
-                        readingAttributeValue = false
-                        lookingForAttributeValue = false
-                        readingAttributeName = false
-                        lookingForAttributeName = true
-                        attributeValue = accumulator.substring(0, accumulator.length - 1)
-                        accumulator = ""
-                        attributes[attributeName] = attributeValue
-                        attributeName = null
-                        attributeValue = null
-                        attributeValueQuotes = null
+                        readingAttributeValue = false;
+                        lookingForAttributeValue = false;
+                        readingAttributeName = false;
+                        lookingForAttributeName = true;
+                        attributeValue = accumulator
+                            .substring(0, accumulator.length - 1);
+                        accumulator = "";
+                        attributes[attributeName] = attributeValue;
+                        attributeName = null;
+                        attributeValue = null;
+                        attributeValueQuotes = null;
                     }
                 } else {
-                    throw "wild ending " + attributeValueQuotes + " discovered at position " + i + " in: " + content
+                    throw "wild ending " + attributeValueQuotes 
+                        + " discovered at position " + i + " in: " + content;
                 }
             } else if (c == '"' || c == "'") {
                 if (lookingForAttributeValue) {
                     // start reading attribute value
-                    lookingForAttributeValue = false
-                    readingAttributeValue = true
-                    attributeValueQuotes = c
-                    accumulator = ""
+                    lookingForAttributeValue = false;
+                    readingAttributeValue = true;
+                    attributeValueQuotes = c;
+                    accumulator = "";
                 } if (readingAttributeValue) {
                     // continue
                 } else {
-                    throw "wild " + c + " discovered at position " + i + " in: " + content
+                    throw "wild " + c + " discovered at position " + i 
+                        + " in: " + content;
                 }
             } else {
                 if (lookingForAttributeName) {
-                    lookingForAttributeName = false
-                    readingAttributeName = true
+                    lookingForAttributeName = false;
+                    readingAttributeName = true;
                 } else if (lookingForAttributeValue) {
                     // not going to find a value, starting with a new name
-                    readingAttributeValue = false
-                    lookingForAttributeValue = false
-                    readingAttributeName = false
-                    lookingForAttributeName = true
-                    attributeValue = null
-                    accumulator = ""
-                    attributes[attributeName] = attributeValue
-                    attributeName = null
-                    attributeValue = null
-                    attributeValueQuotes = null
+                    readingAttributeValue = false;
+                    lookingForAttributeValue = false;
+                    readingAttributeName = false;
+                    lookingForAttributeName = true;
+                    attributeValue = null;
+                    accumulator = "";
+                    attributes[attributeName] = attributeValue;
+                    attributeName = null;
+                    attributeValue = null;
+                    attributeValueQuotes = null;
                 }
                 // continue
             }
         }
-        return attributes
+        return attributes;
     }
 
     static #shouldBeLeafElement(tagName) {
-        return tagName != null && EbookNode.LEAF_ELEMENTS.includes(tagName.toLowerCase())
+        return tagName != null && EbookNode.LEAF_ELEMENTS
+            .includes(tagName.toLowerCase())
     }
 
     static #isTag(str) {
-        return /^<\/?[^>]+>$/.exec(str) != null
+        return /^<\/?[^>]+>$/.exec(str) != null;
     }
       
     static #isEndTag(str) {
-        return /^<\/[^>]+>$/.exec(str) != null
+        return /^<\/[^>]+>$/.exec(str) != null;
     }
         
     static isBothTag(str) {
         return str.startsWith("<!--") 
             || (str.startsWith("<") && str.endsWith("/>"))
-            || (str.startsWith("<?xml") && str.endsWith("?>"))
+            || (str.startsWith("<?xml") && str.endsWith("?>"));
     }
       
     static #getTagName(str) {
-        var tagNamePattern = /<\/?([^>\s]+)/
-        var match = tagNamePattern.exec(str)
+        var tagNamePattern = /<\/?([^>\s]+)/;
+        var match = tagNamePattern.exec(str);
         if (match != null) {
-          return match[1]
+          return match[1];
         }
-        return null
+        return null;
     }
 
     static parseHtmlToEbookNode(html, entrancePosition, filename, ebook) {
-        var body = EbookNode.#getHtmlBody(html)
+        var body = EbookNode.#getHtmlBody(html);
         if (body != null) {
-          return EbookNode.#parseBody(body, entrancePosition, filename, ebook)
+          return EbookNode.#parseBody(body, entrancePosition, filename, ebook);
         }
-        return null
+        return null;
     }
 
     static parseXmlToEbookNode(xml) {
-        return EbookNode.#parseBody(xml, null, null, null)
+        return EbookNode.#parseBody(xml, null, null, null);
     }
 
     static #getHtmlBody(html) {
-        var bodyStartPattern = /<body[^>]*>/
-        var bodyStartMatch = bodyStartPattern.exec(html)
+        var bodyStartPattern = /<body[^>]*>/;
+        var bodyStartMatch = bodyStartPattern.exec(html);
       
-        var bodyEndPattern = /<\/body\s*>/
-        var bodyEndMatch = bodyEndPattern.exec(html)
+        var bodyEndPattern = /<\/body\s*>/;
+        var bodyEndMatch = bodyEndPattern.exec(html);
       
         if (bodyStartMatch != null && bodyEndMatch != null) {
-          var from = bodyStartMatch.index + bodyStartMatch[0].length
-          var to = bodyEndMatch.index
-          return html.substring(from, to)
+          var from = bodyStartMatch.index + bodyStartMatch[0].length;
+          var to = bodyEndMatch.index;
+          return html.substring(from, to);
         } else {
-          return null
+          return null;
         }
     }
 
     static async #parseBody(body, entrancePosition, filename, ebook) {
-        var bodyNode = new EbookNode("body", "")
-        var current = bodyNode
+        var bodyNode = new EbookNode("body", "");
+        var current = bodyNode;
       
-        var content = ""
+        var content = "";
       
         for (var i = 0; i < body.length; i++) {
-            var c = body.charAt(i)
+            var c = body.charAt(i);
       
             if (c == '<') {
                 // starting a new tag
                 // save what we have in content
                 if (EbookNode.#isTag(content)) {
-                    throw "this should not happen"
+                    throw "this should not happen";
                 } else {
                     // can only be a text node or nothing
                     if (content.length > 0) {
-                        current.#addChild(new EbookNode(null, content))
-                        content = ""
+                        current.#addChild(new EbookNode(null, content));
+                        content = "";
                     }
                 }
             }
-      
+
             // accumulate content
-            content += c
+            content += c;
       
             if (c == '>') {
                 // ending a tag
                 if (EbookNode.#isTag(content)) {
-                    var name = EbookNode.#getTagName(content)
+                    var name = EbookNode.#getTagName(content);
                     // can only be a tag
                     if (EbookNode.#isEndTag(content)) {
                         if (name != current.name) {
-                            throw "incompatible end tag " + name + " for " + current.name
+                            throw "incompatible end tag " + name + " for "
+                                + current.name;
                         }
                         // move current node up
-                        current = current.parent
+                        current = current.parent;
                     } else if (EbookNode.isBothTag(content)) {
                         // just add this tag without content
-                        current.#addChild(new EbookNode(name, content))
+                        current.#addChild(new EbookNode(name, content));
                     } else {
                         // a start tag
-                        var newNode = new EbookNode(name, content)
-                        current.#addChild(newNode)
-                        current = newNode
+                        var newNode = new EbookNode(name, content);
+                        current.#addChild(newNode);
+                        current = newNode;
                     }
                     // reset content
-                    content = ""
+                    content = "";
                 } else {
-                    throw "wild > encountered"
+                    throw "wild > encountered";
                 }
             }
         }
@@ -370,407 +368,439 @@ class EbookNode {
         // add the last text node, if there is still such a thing remaining
         if (content.length > 0) {
             if (EbookNode.#isTag(content)) {
-                throw "this should not happen"
+                throw "this should not happen";
             } else {
                 // can only be a text node or nothing
                 if (content.length > 0) {
-                    current.#addChild(new EbookNode(null, content))
+                    current.#addChild(new EbookNode(null, content));
                 }
             }
         }
 
         if (entrancePosition != null) {
-            bodyNode.#collapseLeaves()
-            bodyNode.#updatePositions(entrancePosition)
+            bodyNode.#collapseLeaves();
+            bodyNode.#updatePositions(entrancePosition);
         }
-        return bodyNode
-    }
-
-    static #isLink(tagName) {
-        return tagName.toLowerCase() == "a"
-    }
-    static #getOnlyStartingTag(elem) {
-        return elem.innerHTML ? elem.outerHTML.slice(0,elem.outerHTML.indexOf(elem.innerHTML)) : elem.outerHTML
+        return bodyNode;
     }
 
     // find position of the id, if it exists
     getIdPosition(id) {
-        if (this.attributes && this.attributes.id && this.attributes.id != null && this.attributes.id == id) {
-            return this.start
+        if (this.attributes && this.attributes.id && this.attributes.id != null
+            && this.attributes.id == id)
+        {
+            return this.start;
         }
         if (this.children.length > 0) {
             for (var i = 0; i < this.children.length; i++) {
-                let position = this.children[i].getIdPosition(id)
+                let position = this.children[i].getIdPosition(id);
                 if (position != null) {
-                    return position
+                    return position;
                 }
             }
         }
-        return null
+        return null;
     }
 
     #addChild(node) {
-        this.children.push(node)
-        node.parent = this
-    }
-      
-    #printAtLevel(level, text) {
-        var message = ""
-        for (var i = 0; i <= level; i++) message += "\t"
-        message += text
-    }
-
-    prettyPrint(level = 0) {
-        this.#printAtLevel(level, this.name + "[" + this.start + "," + this.end + "]: " + this.content)
-        for (var i = 0; i < this.children.length; i++) {
-            this.children[i].prettyPrint(level+1)
-        }
+        this.children.push(node);
+        node.parent = this;
     }
       
     getLength() {
-        return this.end - this.start + 1
+        return this.end - this.start + 1;
     }
 
     #updatePositions(entrancePosition = 0) {
-        var position = entrancePosition
-        this.start = position
+        var position = entrancePosition;
+        this.start = position;
         if (this.name == null) {
-            this.end = this.start + this.content.length - 1
+            this.end = this.start + this.content.length - 1;
         } else if (EbookNode.#shouldBeLeafElement(this.name)) {
             // occupies a single position
-            this.end = this.start
+            this.end = this.start;
         } else if (this.children.length == 0) {
-            // an element without children, maybe used for spacing, should occupy a single position
-            this.end = this.start
+            // an element without children, maybe used for spacing, should
+            // occupy a single position
+            this.end = this.start;
         } else {
             // compute for children and update
             for (var i = 0; i < this.children.length; i++) {
-                var child = this.children[i]
-                child.#updatePositions(position)
-                position = child.end + 1
+                var child = this.children[i];
+                child.#updatePositions(position);
+                position = child.end + 1;
             }
-            this.end = this.children[this.children.length - 1].end
+            this.end = this.children[this.children.length - 1].end;
         }
     }
 
     #collapseLeaves() {
-        if (EbookNode.#shouldBeLeafElement(this.name) && this.children.length > 0) {
+        if (EbookNode.#shouldBeLeafElement(this.name) 
+            && this.children.length > 0)
+        {
             // extract content from children
-            this.content = this.getContent()
-            this.children = []
+            this.content = this.getContent();
+            this.children = [];
         } else {
             for (var i = 0; i < this.children.length; i++) {
-                this.children[i].#collapseLeaves()
+                this.children[i].#collapseLeaves();
             }
         }
     }
 
     getContent() {
         if (this.name == null) {
-            return this.content
+            return this.content;
         } else if (this.name == "body") {
-            var result = ""
+            var result = "";
             for (var i = 0; i < this.children.length; i++) {
-                result += this.children[i].getContent()
+                result += this.children[i].getContent();
             }
-            return result
-        } else if (EbookNode.#shouldBeLeafElement(this.name) && this.children.length == 0) {
-            return this.content
+            return result;
+        } else if (EbookNode.#shouldBeLeafElement(this.name) 
+            && this.children.length == 0) 
+        {
+            return this.content;
         } else {
-            var result = this.content
+            var result = this.content;
             for (var i = 0; i < this.children.length; i++) {
-                result += this.children[i].getContent()
+                result += this.children[i].getContent();
             }
-            result += "</" + this.name + ">"
-            return result
+            result += "</" + this.name + ">";
+            return result;
         }
     }
 
     setContent(newContent) {
-        this.content = newContent
+        this.content = newContent;
         if (this.name != null) {
             try {
-                this.attributes = EbookNode.#parseAttributes(this.content)
+                this.attributes = EbookNode.#parseAttributes(this.content);
             } catch (error) {
-                console.log(error)
+                console.log(error);
             }
         }
     }
 
     #nextNode() {
         // is this a leaf?
-        var current = this
+        var current = this;
         if (current.children.length == 0) {
             // go up the parent line until we find next sibling
-            var parent = current.parent
-            while (parent != null && parent.children.indexOf(current) == parent.children.length - 1) {
-                current = parent
-                parent = current.parent
+            var parent = current.parent;
+            while (parent != null 
+                && parent.children.indexOf(current)
+                == parent.children.length - 1)
+            {
+                current = parent;
+                parent = current.parent;
             }
             if (parent != null) {
                 // we have the next sibling node
-                current = parent.children[parent.children.indexOf(current) + 1]
-                return current
+                current = parent.children[parent.children.indexOf(current) + 1];
+                return current;
             } else {
                 // we have reached root, this was the last leaf, there is no other
-                return null
+                return null;
             }
         } else {
-            current = current.children[0]
-            return current
+            current = current.children[0];
+            return current;
         }
     }
     
     #nextNodeOfName(nodeNameRegex) {
-        let current = this.#nextNode()
+        let current = this.#nextNode();
         while (current != null) {
-            if (current.name && current.name.match(nodeNameRegex)) return current
-            current = current.#nextNode()
+            if (current.name && current.name.match(nodeNameRegex)) {
+                return current;
+            }
+            current = current.#nextNode();
         }
-        return null
+        return null;
     }
 
     #nextLeaf() {
         // is this a leaf?
-        var current = this
+        var current = this;
         if (current.children.length == 0) {
             // go up the parent line until we find next sibling
-            var parent = current.parent
-            while (parent != null && parent.children.indexOf(current) == parent.children.length - 1) {
-                current = parent
-                parent = current.parent
+            var parent = current.parent;
+            while (parent != null 
+                && parent.children.indexOf(current) 
+                == parent.children.length - 1) 
+            {
+                current = parent;
+                parent = current.parent;
             }
             if (parent != null) {
                 // we have the next sibling in current, must find first leaf
-                current = parent.children[parent.children.indexOf(current) + 1]
+                current = parent.children[parent.children.indexOf(current) + 1];
             } else {
                 // we have reached root, this was the last leaf, there is no other
-                return null
+                return null;
             }
         }
         // find first child of the current node
         while (current.children.length > 0) {
-            current = current.children[0]
+            current = current.children[0];
         }
-        return current
+        return current;
     }
 
     #getRoot() {
-        var current = this
-        while (current.parent != null) current = current.parent
-        return current
+        var current = this;
+        while (current.parent != null) current = current.parent;
+        return current;
     }
       
     getDocumentStart() {
-        return this.#getRoot().start
+        return this.#getRoot().start;
     }
       
     getDocumentEnd() {
-        return this.#getRoot().end
+        return this.#getRoot().end;
     }
 
     #previousLeaf() {
-        var current = this
-        var parent = current.parent
+        var current = this;
+        var parent = current.parent;
         while (parent != null && parent.children.indexOf(current) == 0) {
             // keep going up
-            current = parent
-            parent = current.parent
+            current = parent;
+            parent = current.parent;
         }
         if (parent != null) {
-            current = parent.children[parent.children.indexOf(current) - 1]
+            current = parent.children[parent.children.indexOf(current) - 1];
             // go down on the last child track
             while (current.children.length > 0) {
-                current = current.children[current.children.length - 1]
+                current = current.children[current.children.length - 1];
             }
-            return current
+            return current;
         } else {
-            return null
+            return null;
         }
     }
 
     #leafAtPosition(position) {
-        if (position < this.start || this.end < position) return null
-        else {
-            var currentNode = this
+        if (position < this.start || this.end < position) {
+            return null;
+        } else {
+            var currentNode = this;
             while (currentNode != null && currentNode.children.length > 0) {
                 var i = 0;
                 while (i < currentNode.children.length 
-                    && (currentNode.children[i].start > position || currentNode.children[i].end < position)) {
+                    && (currentNode.children[i].start > position 
+                        || currentNode.children[i].end < position
+                    ))
+                {
                     i = i + 1;
                 }
-            if (i < currentNode.children.length) {
-                currentNode = currentNode.children[i]
-            } else {
-                currentNode = null
+                if (i < currentNode.children.length) {
+                    currentNode = currentNode.children[i];
+                } else {
+                    currentNode = null;
+                }
             }
-        }
-            return currentNode
+            return currentNode;
         }
     }
 
     findChapterEnd(position) {
-        var leaf = this.#leafAtPosition(position)
+        var leaf = this.#leafAtPosition(position);
         if (leaf) {
-            let nextHeader = leaf.#nextNodeOfName(/h[1-2]/)
+            let nextHeader = leaf.#nextNodeOfName(/h[1-2]/);
             if (nextHeader) {
-                return nextHeader.start
+                return nextHeader.start;
             }
         }
-        return this.getDocumentEnd()
+        return this.getDocumentEnd();
     }
 
     findSpaceAfter(position) {
-        var spacePattern = /\s/
+        var spacePattern = /\s/;
         // first get leaf at position
-        var leaf = this.#leafAtPosition(position)
-        // for a text node, next space may be in the text node, next space character after position
+        var leaf = this.#leafAtPosition(position);
+        // for a text node, next space may be in the text node, next space
+        // character after position
         // if other kind of node, next space is the start of next leaf
         if (leaf != null && leaf.end == position) {
             // we need to look in the next node
-            leaf = leaf.#nextLeaf()
+            leaf = leaf.#nextLeaf();
         }
         if (leaf != null && leaf.name == null) {
-            var searchStartPosition = (position - leaf.start + 1 > 0) ? position - leaf.start + 1 : 0
-            var m = spacePattern.exec(leaf.content.substring(searchStartPosition))
+            var searchStartPosition = (position - leaf.start + 1 > 0) 
+                ? position - leaf.start + 1 
+                : 0;
+            var m = spacePattern.exec(
+                leaf.content.substring(searchStartPosition)
+            );
             if (m != null) {
-                return m.index + position + 1
-            }
-        }
-        if (leaf != null) return leaf.end
-        else return this.getDocumentEnd()
-    }
-      
-    findSpaceBefore(position) {
-        var spacePattern = /\s[^\s]*$/
-        var leaf = this.#leafAtPosition(position)
-        if (leaf != null && leaf.name == null) {
-            var searchText = leaf.content.substring(0, position - leaf.start)
-            var m = spacePattern.exec(searchText)
-            if (m != null) {
-                return m.index + leaf.start
+                return m.index + position + 1;
             }
         }
         if (leaf != null) {
-            leaf = leaf.#previousLeaf()
+            return leaf.end;
+        } else {
+            return this.getDocumentEnd();
         }
-        if (leaf != null) return leaf.end
-        else return this.getDocumentStart()
+    }
+
+    findSpaceBefore(position) {
+        var spacePattern = /\s[^\s]*$/;
+        var leaf = this.#leafAtPosition(position);
+        if (leaf != null && leaf.name == null) {
+            var searchText = leaf.content.substring(0, position - leaf.start);
+            var m = spacePattern.exec(searchText);
+            if (m != null) {
+                return m.index + leaf.start;
+            }
+        }
+        if (leaf != null) {
+            leaf = leaf.#previousLeaf();
+        }
+        if (leaf != null) {
+            return leaf.end;
+        } else {
+            return this.getDocumentStart();
+        }
     }
 
     copy(from, to) {
         if (this.name == null) {
-            if (from <= this.start && this.end <= to) {
+            if (from <= this.start 
+                && this.end <= to
+            ) {
                 // this node is copied whole
-                return new EbookNode(null, this.content, null, [], this.start, this.end)
-            } else if (from <= this.start && this.start <= to && to<= this.end) {
+                return new EbookNode(
+                    null, 
+                    this.content, 
+                    null, 
+                    [], 
+                    this.start, 
+                    this.end
+                );
+            } else if (from <= this.start 
+                && this.start <= to 
+                && to<= this.end
+            ) {
                 // copy ends at this node
-                return new EbookNode(this.name, this.content.substring(0, to - this.start + 1), null, [], this.start, to)
-            } else if (this.start <= from && from <= this.end && this.end <= to) {
+                return new EbookNode(
+                    this.name, 
+                    this.content.substring(0, to - this.start + 1), 
+                    null, 
+                    [], 
+                    this.start, 
+                    to
+                );
+            } else if (this.start <= from 
+                && from <= this.end 
+                && this.end <= to
+            ) {
                 // copy starts at this node
-                return new EbookNode(this.name, this.content.substring(from - this.start), null, [], from, this.end)
-            } else if (this.start <= from && to < this.end) {
+                return new EbookNode(
+                    this.name, 
+                    this.content.substring(from - this.start), 
+                    null, 
+                    [], 
+                    from, 
+                    this.end
+                );
+            } else if (this.start <= from 
+                && to < this.end
+            ) {
                 // we only copy part of this node
-                return new EbookNode(this.name, this.content.substring(from - this.start, to - this.start + 1), null, [], from, to)
+                return new EbookNode(
+                    this.name, 
+                    this.content.substring(
+                        from - this.start, 
+                        to - this.start + 1
+                    ), 
+                    null, 
+                    [], 
+                    from, 
+                    to
+                );
             } else {
-                return null
+                return null;
             }
         } else if (EbookNode.#shouldBeLeafElement(this.name)) {
             if (from <= this.start && this.end <= to) {
                 // include element in selection
-                return new EbookNode(this.name, this.content, null, [], this.start, this.end)
+                return new EbookNode(
+                    this.name, 
+                    this.content, 
+                    null, 
+                    [], 
+                    this.start, 
+                    this.end
+                );
             } else {
-                return null
+                return null;
             }
         } else {
             if (this.end < from || this.start > to) {
                 // this node is outside the range and should not be copied
-                return null
+                return null;
             } else {
-                var newNode = new EbookNode(this.name, this.content)
-                var newChildren = []
+                var newNode = new EbookNode(this.name, this.content);
+                var newChildren = [];
                 for (var i = 0; i < this.children.length; i++) {
-                    var copiedChild = this.children[i].copy(from, to)
+                    var copiedChild = this.children[i].copy(from, to);
                     if (copiedChild != null) {
-                        copiedChild.parent = newNode
-                        newChildren.push(copiedChild)
+                        copiedChild.parent = newNode;
+                        newChildren.push(copiedChild);
                     }
                 }
-                newNode.children = newChildren
+                newNode.children = newChildren;
                 if (newNode.children.length == 0) {
-                    newNode.start = this.start
-                    newNode.end = this.end
+                    newNode.start = this.start;
+                    newNode.end = this.end;
                 } else {
-                    newNode.start = newNode.children[0].start
-                    newNode.end = newNode.children[newNode.children.length - 1].end
+                    newNode.start = newNode.children[0].start;
+                    newNode.end = 
+                        newNode.children[newNode.children.length - 1].end;
                 }
-                return newNode
+                return newNode;
             }
         }
-    }
-
-    // todo: remove this?
-    static expand(object) {
-        if (object && object != null) {
-            var node = new EbookNode(object.name, object.content)
-            node.start = object.start
-            node.end = object.end
-            for (var i = 0; i < object.children.length; i++) {
-                var childNode = EbookNode.expand(object.children[i])
-                childNode.parent = node
-                node.children.push(childNode)
-            }
-            return node
-        } else return null
-    }
-
-    simplify() {
-        var output = {}
-        output.name = this.name
-        output.content = this.content
-        output.start = this.start
-        output.end = this.end
-        output.children = []
-        for (var i = 0; i < this.children.length; i++) {
-            output.children.push(this.children[i].simplify())
-        }
-        return output
     }
 
     getResources() {
         if (this.name === 'img') {
-            var rg = /src="([^"]+)"/g
-            return [...this.content.matchAll(rg)].map(m => m[1])
+            var rg = /src="([^"]+)"/g;
+            return [...this.content.matchAll(rg)].map(m => m[1]);
         } else if (this.name === 'image') {
-            var rg = /xlink:href="([^"]+)"/g
-            return [...this.content.matchAll(rg)].map(m => m[1])
+            var rg = /xlink:href="([^"]+)"/g;
+            return [...this.content.matchAll(rg)].map(m => m[1]);
         } else if (this.name === 'a') {
-            var rgHref = /href="([^"]+)"/g
-            return [...this.content.matchAll(rgHref)].map(m => m[1])
+            var rgHref = /href="([^"]+)"/g;
+            return [...this.content.matchAll(rgHref)].map(m => m[1]);
         } else if (this.name === "tr") {
-            var rgSrc = /src="([^"]+)"/g
-            var rgHref = /href="([^"]+)"/g
-            return [...this.content.matchAll(rgSrc)].map(m => m[1]).concat(
-                [...this.content.matchAll(rgHref)].map(m => m[1])
-            )
+            var rgSrc = /src="([^"]+)"/g;
+            var rgHref = /href="([^"]+)"/g;
+            return [...this.content.matchAll(rgSrc)].map(m => m[1])
+                .concat([...this.content.matchAll(rgHref)].map(m => m[1]));
         } else if (this.children.length > 0) {
-            return this.children.flatMap(c => c.getResources())
+            return this.children.flatMap(c => c.getResources());
         } else {
-            return []
+            return [];
         }
     }
 
     findChildrenWithTag(tagName, deep = false) {
-        let result = []
+        let result = [];
         for (let i = 0; i < this.children.length; i++) {
             if (this.children[i].name == tagName) {
-                result.push(this.children[i])
+                result.push(this.children[i]);
             }
             if (deep) {
-                result = result.concat(this.children[i].findChildrenWithTag(tagName, deep))
+                result = result.concat(
+                    this.children[i].findChildrenWithTag(tagName, deep)
+                );
             }
         }
-        return result
+        return result;
     }
 }
 
